@@ -1,4 +1,4 @@
-/* EMPRENDEDORES App Servis - V1
+/* SANE - Sistema Administrativo para Nuevos Emprendedores (desarrollado por App Servis)
    Almacenamiento: localStorage. Sin frameworks, sin librerías externas. */
 
 const STORAGE_KEY = 'emprendedoresAppServis_v1';

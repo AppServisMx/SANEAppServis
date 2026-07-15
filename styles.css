@@ -27,15 +27,17 @@
   --shadow-card: 0 6px 16px rgba(124, 58, 237, 0.08);
   --shadow-nav: 0 -4px 16px rgba(36, 27, 54, 0.08);
 
-  --content-max-width: 480px;
+  --content-max-width: 100%;
   --sidebar-width: 240px;
   --sidebar-width-collapsed: 76px;
 }
 
-@media (min-width: 768px) {
-  :root { --content-max-width: 700px; }
+/* Tablet: ancho propio, nunca igual al de escritorio (768px a 1023px) */
+@media (min-width: 768px) and (max-width: 1023px) {
+  :root { --content-max-width: 680px; }
 }
 
+/* Escritorio: sin cambios respecto a la versión aprobada (desde 1024px) */
 @media (min-width: 1024px) {
   :root { --content-max-width: 1120px; }
 }
@@ -115,29 +117,70 @@ svg {
 .topbar-brand {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  min-width: 0;
 }
 
 .topbar-logo {
-  width: 42px;
-  height: 42px;
+  width: 34px;
+  height: 34px;
   flex-shrink: 0;
 }
 
+.topbar-text {
+  min-width: 0;
+}
+
 .topbar-eyebrow {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--color-text-muted);
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 
 .topbar-title {
-  font-size: 20px;
-  margin-top: 2px;
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--color-violet-dark);
+  letter-spacing: 0.3px;
+}
+
+.topbar-tagline {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-top: 1px;
+  line-height: 1.3;
 }
 
 .topbar-subtitle {
-  margin-top: 10px;
-  font-size: 14px;
+  margin-top: 8px;
+  font-size: 13px;
   color: var(--color-text-muted);
+}
+
+.app-credit {
+  margin-top: 10px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  opacity: 0.8;
+}
+
+@media (min-width: 768px) {
+  .topbar-logo {
+    width: 42px;
+    height: 42px;
+  }
+
+  .topbar-title {
+    font-size: 20px;
+  }
+
+  .topbar-tagline {
+    font-size: 12.5px;
+  }
 }
 
 .section-header {
@@ -165,7 +208,7 @@ svg {
 
 .resumen-cards {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 12px;
 }
 
@@ -229,12 +272,14 @@ svg {
 
 .quick-actions {
   display: flex;
+  flex-direction: column;
   gap: 12px;
   margin-top: 20px;
 }
 
 .quick-btn {
   flex: 1;
+  width: 100%;
   border: none;
   border-radius: 999px;
   padding: 14px 12px;
@@ -485,11 +530,34 @@ svg {
 }
 
 .sidebar-logo-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.sidebar-logo-name {
   font-weight: 800;
-  font-size: 14px;
-  letter-spacing: 0.3px;
+  font-size: 15px;
+  letter-spacing: 0.4px;
   color: var(--color-violet-dark);
   white-space: nowrap;
+}
+
+.sidebar-logo-tagline {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-credit {
+  margin: auto 0 16px;
+  padding: 0 16px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  text-align: center;
+  opacity: 0.8;
 }
 
 .sidebar-toggle {
@@ -648,17 +716,63 @@ svg {
   color: var(--color-violet-dark);
 }
 
-/* ---------- Tablets: aprovechar mejor el ancho, misma navegación inferior ---------- */
+/* ---------- Desde tablet (768px) en adelante: tarjeta de Inicio y acciones rápidas
+   comparten el mismo acomodo que ya tenía la vista de escritorio aprobada ---------- */
 
-@media (min-width: 480px) {
+@media (min-width: 768px) {
   .home-cards {
     grid-template-columns: 1fr 1fr;
   }
+
+  .quick-actions {
+    flex-direction: row;
+  }
 }
 
-@media (min-width: 768px) {
+/* ---------- Tablet (768px a 1023px): layout propio, distinto al de escritorio ---------- */
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .screen {
+    padding: 24px 24px 28px;
+  }
+
   .resumen-cards {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .item-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
+
+  .icon-btn {
+    width: 40px;
+    height: 40px;
+  }
+
+  .icon-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .nav-btn {
+    font-size: 11.5px;
+  }
+
+  .nav-icon {
+    width: 23px;
+    height: 23px;
+  }
+
+  .period-tab {
+    padding: 12px 6px;
+    font-size: 13.5px;
+  }
+
+  .add-btn,
+  .btn-primary,
+  .btn-secondary {
+    padding: 15px;
   }
 }
 
@@ -688,7 +802,8 @@ svg {
   }
 
   .sidebar.collapsed .sidebar-logo-text,
-  .sidebar.collapsed .sidebar-link-label {
+  .sidebar.collapsed .sidebar-link-label,
+  .sidebar.collapsed .sidebar-credit {
     display: none;
   }
 
@@ -712,6 +827,10 @@ svg {
   .item-list {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  }
+
+  .resumen-cards {
+    grid-template-columns: repeat(4, 1fr);
   }
 
   .add-btn {
