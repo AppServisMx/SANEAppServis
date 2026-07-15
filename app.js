@@ -604,7 +604,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* Barra lateral: abrir/cerrar arrastrando el borde con el dedo o el mouse.
      Solo se mueve mientras se arrastra; al soltar siempre cae en uno de los
-     dos tamaños fijos (contraída o expandida), nunca queda en un ancho intermedio. */
+     dos tamaños fijos (contraída o expandida), nunca queda en un ancho intermedio.
+     Se usan eventos de mouse y touch por separado (no Pointer Events) por
+     compatibilidad, y el seguimiento del arrastre se hace sobre "document"
+     para que no se pierda si el dedo o el mouse se salen del mango. */
   const sidebarCollapsedWidth = 76;
   const getSidebarExpandedWidth = () => Math.min(190, window.innerWidth * 0.7);
 
@@ -614,24 +617,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const resizeHandle = document.getElementById('sidebar-resize-handle');
 
-  resizeHandle.addEventListener('pointerdown', e => {
+  function startSidebarDrag(clientX) {
     isDraggingSidebar = true;
-    dragStartX = e.clientX;
+    dragStartX = clientX;
     dragStartWidth = sidebar.getBoundingClientRect().width;
     sidebar.classList.add('dragging');
-    resizeHandle.setPointerCapture(e.pointerId);
-  });
+  }
 
-  resizeHandle.addEventListener('pointermove', e => {
+  function moveSidebarDrag(clientX) {
     if (!isDraggingSidebar) return;
     const collapsedW = sidebarCollapsedWidth;
     const expandedW = getSidebarExpandedWidth();
-    const delta = e.clientX - dragStartX;
+    const delta = clientX - dragStartX;
     const newWidth = Math.min(expandedW, Math.max(collapsedW, dragStartWidth + delta));
     sidebar.style.width = `${newWidth}px`;
-  });
+  }
 
-  const endSidebarDrag = e => {
+  function endSidebarDrag() {
     if (!isDraggingSidebar) return;
     isDraggingSidebar = false;
     sidebar.classList.remove('dragging');
@@ -644,10 +646,24 @@ document.addEventListener('DOMContentLoaded', () => {
     sidebar.style.width = '';
     sidebar.classList.toggle('collapsed', shouldCollapse);
     localStorage.setItem(SIDEBAR_STORAGE_KEY, shouldCollapse);
-  };
+  }
 
-  resizeHandle.addEventListener('pointerup', endSidebarDrag);
-  resizeHandle.addEventListener('pointercancel', endSidebarDrag);
+  resizeHandle.addEventListener('mousedown', e => {
+    e.preventDefault();
+    startSidebarDrag(e.clientX);
+  });
+  document.addEventListener('mousemove', e => moveSidebarDrag(e.clientX));
+  document.addEventListener('mouseup', endSidebarDrag);
+
+  resizeHandle.addEventListener('touchstart', e => {
+    startSidebarDrag(e.touches[0].clientX);
+  }, { passive: true });
+  document.addEventListener('touchmove', e => {
+    if (!isDraggingSidebar) return;
+    moveSidebarDrag(e.touches[0].clientX);
+  }, { passive: true });
+  document.addEventListener('touchend', endSidebarDrag);
+  document.addEventListener('touchcancel', endSidebarDrag);
 
   /* Navegación (barra inferior en móvil/tablet y barra lateral en escritorio) */
   document.querySelectorAll('.nav-btn').forEach(btn => {

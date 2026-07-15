@@ -566,8 +566,8 @@ svg {
 .sidebar-resize-handle {
   position: absolute;
   top: 0;
-  right: -14px;
-  width: 28px;
+  right: 0;
+  width: 18px;
   height: 100%;
   cursor: ew-resize;
   touch-action: none;
