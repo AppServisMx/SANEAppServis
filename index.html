@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>EMPRENDEDORES App Servis</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- ===================== INICIO ===================== -->
+  <section id="screen-inicio" class="screen active">
+    <header class="topbar">
+      <p class="topbar-eyebrow">Hola 👋</p>
+      <h1 class="topbar-title">EMPRENDEDORES App Servis</h1>
+      <p class="topbar-subtitle">Así te fue hoy en tu negocio</p>
+    </header>
+
+    <div class="home-cards">
+      <div class="stat-card stat-card--violet">
+        <span class="stat-label">Vendiste hoy</span>
+        <span class="stat-value" id="home-ventas">$0.00</span>
+      </div>
+      <div class="stat-card stat-card--orange">
+        <span class="stat-label">Gastaste hoy</span>
+        <span class="stat-value" id="home-gastos">$0.00</span>
+      </div>
+      <div class="stat-card stat-card--mint">
+        <span class="stat-label">Ganancia estimada de hoy</span>
+        <span class="stat-value" id="home-ganancia">$0.00</span>
+      </div>
+    </div>
+
+    <div class="quick-actions">
+      <button type="button" class="quick-btn quick-btn--pink" data-goto="ventas">+ Vendí un producto</button>
+      <button type="button" class="quick-btn quick-btn--yellow" data-goto="gastos">+ Gasté en algo</button>
+    </div>
+
+    <button type="button" id="btn-reset-demo" class="link-btn">Borrar estos datos de ejemplo y empezar desde cero</button>
+  </section>
+
+  <!-- ===================== PRODUCTOS ===================== -->
+  <section id="screen-productos" class="screen">
+    <header class="section-header">
+      <h2>Productos</h2>
+      <p class="section-subtitle">Todo lo que vendes</p>
+    </header>
+    <button type="button" id="btn-add-producto" class="add-btn">+ Agregar producto</button>
+    <ul id="lista-productos" class="item-list"></ul>
+    <p id="productos-vacio" class="empty-hint">Aún no tienes productos. Toca "Agregar producto" para empezar.</p>
+  </section>
+
+  <!-- ===================== COSTEO ===================== -->
+  <section id="screen-costeo" class="screen">
+    <header class="section-header">
+      <h2>Costeo</h2>
+      <p class="section-subtitle">¿Cuánto te cuesta hacer cada producto?</p>
+    </header>
+    <button type="button" id="btn-add-costeo" class="add-btn">+ Anota cuánto te cuesta</button>
+    <ul id="lista-costeo" class="item-list"></ul>
+    <p id="costeo-vacio" class="empty-hint">Primero agrega un producto en la pestaña Productos.</p>
+  </section>
+
+  <!-- ===================== VENTAS ===================== -->
+  <section id="screen-ventas" class="screen">
+    <header class="section-header">
+      <h2>Ventas</h2>
+      <p class="section-subtitle">Anota lo que vendes cada día</p>
+    </header>
+    <button type="button" id="btn-add-venta" class="add-btn">+ Vendí un producto</button>
+    <ul id="lista-ventas" class="item-list"></ul>
+    <p id="ventas-vacio" class="empty-hint">Aún no has anotado ninguna venta. Toca "Vendí un producto" para empezar.</p>
+  </section>
+
+  <!-- ===================== GASTOS ===================== -->
+  <section id="screen-gastos" class="screen">
+    <header class="section-header">
+      <h2>Gastos</h2>
+      <p class="section-subtitle">Otros gastos de tu negocio, aparte de tus productos</p>
+    </header>
+
+    <div class="warning-banner">
+      <span aria-hidden="true">⚠️</span>
+      <span>No registres como gasto algo que ya incluiste en el costeo de tus productos, porque se descontaría dos veces.</span>
+    </div>
+
+    <button type="button" id="btn-add-gasto" class="add-btn">+ Gasté en algo</button>
+    <ul id="lista-gastos" class="item-list"></ul>
+    <p id="gastos-vacio" class="empty-hint">Aún no has anotado ningún gasto. Toca "Gasté en algo" para empezar.</p>
+  </section>
+
+  <!-- ===================== RESUMEN ===================== -->
+  <section id="screen-resumen" class="screen">
+    <header class="section-header">
+      <h2>Resumen</h2>
+      <p class="section-subtitle">Mira cómo va tu negocio</p>
+    </header>
+
+    <div class="period-tabs">
+      <button type="button" class="period-tab active" data-periodo="dia">Hoy</button>
+      <button type="button" class="period-tab" data-periodo="semana">Semana</button>
+      <button type="button" class="period-tab" data-periodo="mes">Mes</button>
+    </div>
+
+    <div class="resumen-cards">
+      <div class="stat-card stat-card--violet">
+        <span class="stat-label">Cuánto vendiste</span>
+        <span class="stat-value" id="resumen-ventas">$0.00</span>
+      </div>
+      <div class="stat-card stat-card--pink">
+        <span class="stat-label">Cuánto ganaste vendiendo</span>
+        <span class="stat-value" id="resumen-utilidad">$0.00</span>
+      </div>
+      <div class="stat-card stat-card--orange">
+        <span class="stat-label">Otros gastos</span>
+        <span class="stat-value" id="resumen-gastos">$0.00</span>
+      </div>
+      <div class="stat-card stat-card--mint">
+        <span class="stat-label">Ganancia estimada</span>
+        <span class="stat-value" id="resumen-ganancia">$0.00</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== NAVEGACIÓN INFERIOR ===================== -->
+  <nav class="bottom-nav">
+    <button type="button" class="nav-btn active" data-screen="inicio">
+      <span class="nav-icon" aria-hidden="true">🏠</span><span>Inicio</span>
+    </button>
+    <button type="button" class="nav-btn" data-screen="productos">
+      <span class="nav-icon" aria-hidden="true">📦</span><span>Productos</span>
+    </button>
+    <button type="button" class="nav-btn" data-screen="costeo">
+      <span class="nav-icon" aria-hidden="true">🧮</span><span>Costeo</span>
+    </button>
+    <button type="button" class="nav-btn" data-screen="ventas">
+      <span class="nav-icon" aria-hidden="true">💰</span><span>Ventas</span>
+    </button>
+    <button type="button" class="nav-btn" data-screen="gastos">
+      <span class="nav-icon" aria-hidden="true">💸</span><span>Gastos</span>
+    </button>
+    <button type="button" class="nav-btn" data-screen="resumen">
+      <span class="nav-icon" aria-hidden="true">📊</span><span>Resumen</span>
+    </button>
+  </nav>
+
+  <!-- ===================== MODALES ===================== -->
+  <div id="modal-overlay" class="modal-overlay">
+
+    <form id="form-producto" class="modal-form" data-modal="producto">
+      <h3>¿Qué vendes?</h3>
+      <input type="hidden" id="producto-id">
+      <label>¿Cómo se llama?
+        <input type="text" id="producto-nombre" required placeholder="Ej. Pastel de chocolate">
+      </label>
+      <label>¿En cuánto lo vendes?
+        <input type="number" id="producto-precio" required min="0" step="0.01" placeholder="0.00">
+      </label>
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" data-close-modal>Cancelar</button>
+        <button type="submit" class="btn-primary">Guardar</button>
+      </div>
+    </form>
+
+    <form id="form-costeo" class="modal-form" data-modal="costeo">
+      <h3>¿Cuánto te cuesta hacerlo?</h3>
+      <label>¿Qué producto es?
+        <select id="costeo-producto-select" required></select>
+      </label>
+      <label>¿Cuánto gastas en materiales?
+        <input type="number" id="costeo-materia-prima" min="0" step="0.01" placeholder="0.00">
+      </label>
+      <label>¿Cuánto gastas en empaque?
+        <input type="number" id="costeo-empaque" min="0" step="0.01" placeholder="0.00">
+      </label>
+      <label>¿Cuánto vale tu trabajo?
+        <input type="number" id="costeo-mano-obra" min="0" step="0.01" placeholder="0.00">
+      </label>
+      <label>¿Algún otro gasto para hacerlo?
+        <input type="number" id="costeo-otros" min="0" step="0.01" placeholder="0.00">
+      </label>
+      <div class="modal-total">
+        En total te cuesta: <strong id="costeo-total-preview">$0.00</strong>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" data-close-modal>Cancelar</button>
+        <button type="submit" class="btn-primary">Guardar</button>
+      </div>
+    </form>
+
+    <form id="form-venta" class="modal-form" data-modal="venta">
+      <h3>Vendí un producto</h3>
+      <label>¿Qué vendiste?
+        <select id="venta-producto-select" required></select>
+      </label>
+      <p class="hint-text" id="venta-costo-hint"></p>
+      <label>¿Cuántos vendiste?
+        <input type="number" id="venta-cantidad" required min="1" step="1" value="1">
+      </label>
+      <label>¿Qué día fue?
+        <input type="date" id="venta-fecha" required>
+      </label>
+      <div class="modal-total">
+        Vas a recibir: <strong id="venta-ingreso-preview">$0.00</strong>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" data-close-modal>Cancelar</button>
+        <button type="submit" class="btn-primary">Guardar</button>
+      </div>
+    </form>
+
+    <form id="form-gasto" class="modal-form" data-modal="gasto">
+      <h3>Gasté en algo</h3>
+      <label>¿En qué gastaste?
+        <input type="text" id="gasto-concepto" required placeholder="Ej. Gasolina">
+      </label>
+      <label>¿Cuánto gastaste?
+        <input type="number" id="gasto-monto" required min="0" step="0.01" placeholder="0.00">
+      </label>
+      <label>¿Qué tipo de gasto fue?
+        <select id="gasto-categoria">
+          <option value="gasolina">Gasolina</option>
+          <option value="publicidad">Publicidad</option>
+          <option value="internet">Internet</option>
+          <option value="renta">Renta</option>
+          <option value="servicios">Servicios</option>
+          <option value="otros" selected>Otros</option>
+        </select>
+      </label>
+      <label>¿Qué día fue?
+        <input type="date" id="gasto-fecha" required>
+      </label>
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" data-close-modal>Cancelar</button>
+        <button type="submit" class="btn-primary">Guardar</button>
+      </div>
+    </form>
+
+  </div>
+
+</div>
+
+<script src="app.js" defer></script>
+</body>
+</html>
