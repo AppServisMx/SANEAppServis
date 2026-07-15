@@ -8,16 +8,6 @@
 </head>
 <body>
 
-<!-- Definición compartida del degradado de marca, usada por todos los logotipos de la app -->
-<svg width="0" height="0" style="position:absolute" aria-hidden="true">
-  <defs>
-    <linearGradient id="brandGradient" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#7C3AED"/>
-      <stop offset="1" stop-color="#EC4899"/>
-    </linearGradient>
-  </defs>
-</svg>
-
 <div class="layout">
 
   <!-- ===================== BARRA LATERAL (equipos de escritorio) ===================== -->
@@ -26,13 +16,14 @@
       <div class="sidebar-logo">
         <svg class="brand-mark" viewBox="0 0 40 40" aria-hidden="true">
           <rect width="40" height="40" rx="11" fill="#EDE4FF"/>
-          <ellipse cx="20" cy="8" rx="4.6" ry="7.6" fill="url(#brandGradient)" transform="rotate(0 20 15)"/>
-          <ellipse cx="20" cy="8" rx="4.6" ry="7.6" fill="url(#brandGradient)" transform="rotate(72 20 15)"/>
-          <ellipse cx="20" cy="8" rx="4.6" ry="7.6" fill="url(#brandGradient)" transform="rotate(144 20 15)"/>
-          <ellipse cx="20" cy="8" rx="4.6" ry="7.6" fill="url(#brandGradient)" transform="rotate(216 20 15)"/>
-          <ellipse cx="20" cy="8" rx="4.6" ry="7.6" fill="url(#brandGradient)" transform="rotate(288 20 15)"/>
-          <path d="M19.5 21.5C18.3 25 20.6 29 19.7 34.5" stroke="url(#brandGradient)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
-          <circle cx="20" cy="15" r="3.1" fill="#FBBF24"/>
+          <g fill="#7C3AED">
+            <path d="M17 27C11 22 8 18 8 14.5C8 11.5 10.2 9.3 13 9.3C14.8 9.3 16.2 10.4 17 11.8C17.8 10.4 19.2 9.3 21 9.3C23.8 9.3 26 11.5 26 14.5C26 18 23 22 17 27Z"/>
+            <circle cx="28.5" cy="15" r="5.3"/>
+            <circle cx="26" cy="6.2" r="4"/>
+            <path d="M17 25C15 29 18.5 32.5 17.3 36.5" stroke="#7C3AED" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+            <ellipse cx="9.5" cy="5.5" rx="2" ry="2.9" transform="rotate(-25 9.5 5.5)"/>
+            <ellipse cx="15" cy="3" rx="1.5" ry="2.2" transform="rotate(-10 15 3)"/>
+          </g>
         </svg>
         <span class="sidebar-logo-text">
           <span class="sidebar-logo-name">SANE</span>
@@ -85,13 +76,14 @@
           <div class="topbar-brand">
             <svg class="topbar-logo" viewBox="0 0 40 40" aria-hidden="true">
               <rect width="40" height="40" rx="11" fill="#EDE4FF"/>
-              <ellipse cx="20" cy="8" rx="4.6" ry="7.6" fill="url(#brandGradient)" transform="rotate(0 20 15)"/>
-              <ellipse cx="20" cy="8" rx="4.6" ry="7.6" fill="url(#brandGradient)" transform="rotate(72 20 15)"/>
-              <ellipse cx="20" cy="8" rx="4.6" ry="7.6" fill="url(#brandGradient)" transform="rotate(144 20 15)"/>
-              <ellipse cx="20" cy="8" rx="4.6" ry="7.6" fill="url(#brandGradient)" transform="rotate(216 20 15)"/>
-              <ellipse cx="20" cy="8" rx="4.6" ry="7.6" fill="url(#brandGradient)" transform="rotate(288 20 15)"/>
-              <path d="M19.5 21.5C18.3 25 20.6 29 19.7 34.5" stroke="url(#brandGradient)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
-              <circle cx="20" cy="15" r="3.1" fill="#FBBF24"/>
+              <g fill="#7C3AED">
+                <path d="M17 27C11 22 8 18 8 14.5C8 11.5 10.2 9.3 13 9.3C14.8 9.3 16.2 10.4 17 11.8C17.8 10.4 19.2 9.3 21 9.3C23.8 9.3 26 11.5 26 14.5C26 18 23 22 17 27Z"/>
+                <circle cx="28.5" cy="15" r="5.3"/>
+                <circle cx="26" cy="6.2" r="4"/>
+                <path d="M17 25C15 29 18.5 32.5 17.3 36.5" stroke="#7C3AED" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+                <ellipse cx="9.5" cy="5.5" rx="2" ry="2.9" transform="rotate(-25 9.5 5.5)"/>
+                <ellipse cx="15" cy="3" rx="1.5" ry="2.2" transform="rotate(-10 15 3)"/>
+              </g>
             </svg>
             <div class="topbar-text">
               <p class="topbar-eyebrow">¡Hola! <span class="topbar-title">SANE</span></p>
