@@ -447,9 +447,15 @@ function eliminarGasto(id) {
 document.addEventListener('DOMContentLoaded', () => {
   renderAll();
 
-  /* Barra lateral: recordar si el usuario la dejó contraída o expandida */
+  /* Barra lateral: recordar si el usuario la dejó contraída o expandida.
+     Si nunca la ha ajustado, arranca contraída en pantallas angostas para no
+     quitarle espacio al contenido, y expandida en pantallas grandes. */
   const sidebar = document.getElementById('sidebar');
-  if (localStorage.getItem(SIDEBAR_STORAGE_KEY) === 'true') {
+  const storedSidebarState = localStorage.getItem(SIDEBAR_STORAGE_KEY);
+  const shouldStartCollapsed = storedSidebarState === null
+    ? window.innerWidth < 1024
+    : storedSidebarState === 'true';
+  if (shouldStartCollapsed) {
     sidebar.classList.add('collapsed');
   }
   document.getElementById('sidebar-toggle').addEventListener('click', () => {

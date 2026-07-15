@@ -28,7 +28,7 @@
   --shadow-nav: 0 -4px 16px rgba(36, 27, 54, 0.08);
 
   --content-max-width: 100%;
-  --sidebar-width: 240px;
+  --sidebar-width: min(240px, 70vw);
   --sidebar-width-collapsed: 76px;
 }
 
@@ -94,7 +94,7 @@ svg {
   margin: 0 auto;
   min-height: 100vh;
   background: var(--color-bg);
-  padding-bottom: 84px;
+  padding-bottom: 24px;
 }
 
 /* ---------- Pantallas ---------- */
@@ -152,6 +152,7 @@ svg {
   color: var(--color-text-muted);
   margin-top: 1px;
   line-height: 1.3;
+  overflow-wrap: break-word;
 }
 
 .topbar-subtitle {
@@ -213,6 +214,7 @@ svg {
 }
 
 .stat-card {
+  min-width: 0;
   border-radius: var(--radius-lg);
   padding: 16px;
   display: flex;
@@ -235,6 +237,7 @@ svg {
 .stat-value {
   font-size: 22px;
   font-weight: 700;
+  overflow-wrap: break-word;
 }
 
 .stat-card--featured .stat-value {
@@ -430,6 +433,11 @@ svg {
   margin-top: 1px;
 }
 
+.warning-banner > span {
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
 /* ---------- Pestañas de período ---------- */
 
 .period-tabs {
@@ -444,6 +452,7 @@ svg {
 
 .period-tab {
   flex: 1;
+  min-width: 0;
   border: none;
   background: transparent;
   padding: 10px 6px;
@@ -451,6 +460,9 @@ svg {
   font-size: 12.5px;
   font-weight: 600;
   color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .period-tab.active {
@@ -461,6 +473,8 @@ svg {
 /* ---------- Navegación inferior (móvil y tablet) ---------- */
 
 .bottom-nav {
+  /* Reemplazada por la barra lateral en todos los tamaños de pantalla */
+  display: none;
   position: fixed;
   left: 50%;
   bottom: 0;
@@ -470,7 +484,6 @@ svg {
   height: 68px;
   background: var(--color-surface);
   box-shadow: var(--shadow-nav);
-  display: flex;
   align-items: center;
   justify-content: space-around;
   padding-bottom: env(safe-area-inset-bottom);
@@ -501,10 +514,39 @@ svg {
   height: 21px;
 }
 
-/* ---------- Barra lateral (equipos de escritorio) ---------- */
+/* ---------- Barra lateral (visible en todos los tamaños de pantalla) ---------- */
 
 .sidebar {
+  display: flex;
+  flex-direction: column;
+  width: var(--sidebar-width);
+  flex-shrink: 0;
+  background: var(--color-surface);
+  border-right: 1px solid #EEE6FB;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  transition: width 0.18s ease;
+}
+
+.sidebar.collapsed {
+  width: var(--sidebar-width-collapsed);
+}
+
+.sidebar.collapsed .sidebar-header {
+  flex-direction: column;
+  padding: 16px 8px;
+}
+
+.sidebar.collapsed .sidebar-logo-text,
+.sidebar.collapsed .sidebar-link-label,
+.sidebar.collapsed .sidebar-credit {
   display: none;
+}
+
+.sidebar.collapsed .sidebar-link {
+  justify-content: center;
+  padding: 11px;
 }
 
 .sidebar-header {
@@ -755,15 +797,6 @@ svg {
     height: 18px;
   }
 
-  .nav-btn {
-    font-size: 11.5px;
-  }
-
-  .nav-icon {
-    width: 23px;
-    height: 23px;
-  }
-
   .period-tab {
     padding: 12px 6px;
     font-size: 13.5px;
@@ -776,46 +809,9 @@ svg {
   }
 }
 
-/* ---------- Escritorio: sistema administrativo con barra lateral ---------- */
+/* ---------- Escritorio: sistema administrativo (la barra lateral ya es universal) ---------- */
 
 @media (min-width: 1024px) {
-  .sidebar {
-    display: flex;
-    flex-direction: column;
-    width: var(--sidebar-width);
-    flex-shrink: 0;
-    background: var(--color-surface);
-    border-right: 1px solid #EEE6FB;
-    position: sticky;
-    top: 0;
-    height: 100vh;
-    transition: width 0.18s ease;
-  }
-
-  .sidebar.collapsed {
-    width: var(--sidebar-width-collapsed);
-  }
-
-  .sidebar.collapsed .sidebar-header {
-    flex-direction: column;
-    padding: 16px 8px;
-  }
-
-  .sidebar.collapsed .sidebar-logo-text,
-  .sidebar.collapsed .sidebar-link-label,
-  .sidebar.collapsed .sidebar-credit {
-    display: none;
-  }
-
-  .sidebar.collapsed .sidebar-link {
-    justify-content: center;
-    padding: 11px;
-  }
-
-  .bottom-nav {
-    display: none;
-  }
-
   .app-shell {
     padding-bottom: 40px;
   }
