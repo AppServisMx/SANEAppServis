@@ -84,16 +84,19 @@
         </header>
 
         <div class="home-cards">
-          <div class="stat-card stat-card--violet stat-card--featured">
+          <div class="stat-card stat-card--violet stat-card--featured stat-card--clickable" data-detail="home-ventas" role="button" tabindex="0">
+            <svg class="detail-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
             <span class="stat-label">Vendiste hoy</span>
             <span class="stat-value" id="home-ventas">$0.00</span>
             <span class="stat-extra" id="home-ventas-count">0 ventas hoy</span>
           </div>
-          <div class="stat-card stat-card--orange">
+          <div class="stat-card stat-card--orange stat-card--clickable" data-detail="home-gastos" role="button" tabindex="0">
+            <svg class="detail-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
             <span class="stat-label">Gastaste hoy</span>
             <span class="stat-value" id="home-gastos">$0.00</span>
           </div>
-          <div class="stat-card stat-card--mint">
+          <div class="stat-card stat-card--mint stat-card--clickable" data-detail="home-ganancia" role="button" tabindex="0">
+            <svg class="detail-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
             <span class="stat-label">Ganancia estimada de hoy</span>
             <span class="stat-value" id="home-ganancia">$0.00</span>
           </div>
@@ -190,19 +193,23 @@
         </div>
 
         <div class="resumen-cards">
-          <div class="stat-card stat-card--violet">
+          <div class="stat-card stat-card--violet stat-card--clickable" data-detail="resumen-ventas" role="button" tabindex="0">
+            <svg class="detail-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
             <span class="stat-label">Cuánto vendiste</span>
             <span class="stat-value" id="resumen-ventas">$0.00</span>
           </div>
-          <div class="stat-card stat-card--pink">
+          <div class="stat-card stat-card--pink stat-card--clickable" data-detail="resumen-utilidad" role="button" tabindex="0">
+            <svg class="detail-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
             <span class="stat-label">Cuánto ganaste vendiendo</span>
             <span class="stat-value" id="resumen-utilidad">$0.00</span>
           </div>
-          <div class="stat-card stat-card--orange">
+          <div class="stat-card stat-card--orange stat-card--clickable" data-detail="resumen-gastos" role="button" tabindex="0">
+            <svg class="detail-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
             <span class="stat-label">Otros gastos</span>
             <span class="stat-value" id="resumen-gastos">$0.00</span>
           </div>
-          <div class="stat-card stat-card--mint">
+          <div class="stat-card stat-card--mint stat-card--clickable" data-detail="resumen-ganancia" role="button" tabindex="0">
+            <svg class="detail-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
             <span class="stat-label">Ganancia estimada</span>
             <span class="stat-value" id="resumen-ganancia">$0.00</span>
           </div>
@@ -241,14 +248,21 @@
       <div id="modal-overlay" class="modal-overlay">
 
         <form id="form-producto" class="modal-form" data-modal="producto">
-          <h3>¿Qué vendes?</h3>
-          <input type="hidden" id="producto-id">
-          <label>¿Cómo se llama?
-            <input type="text" id="producto-nombre" required placeholder="Ej. Pastel de chocolate">
-          </label>
-          <label>¿En cuánto lo vendes?
-            <input type="number" id="producto-precio" required min="0" step="0.01" placeholder="0.00">
-          </label>
+          <div class="modal-header">
+            <h3>¿Qué vendes?</h3>
+            <button type="button" class="modal-close-x" data-close-modal aria-label="Cerrar">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="producto-id">
+            <label>¿Cómo se llama?
+              <input type="text" id="producto-nombre" required placeholder="Ej. Pastel de chocolate">
+            </label>
+            <label>¿En cuánto lo vendes?
+              <input type="number" id="producto-precio" required min="0" step="0.01" placeholder="0.00">
+            </label>
+          </div>
           <div class="modal-actions">
             <button type="button" class="btn-secondary" data-close-modal>Cancelar</button>
             <button type="submit" class="btn-primary">Guardar</button>
@@ -256,24 +270,31 @@
         </form>
 
         <form id="form-costeo" class="modal-form" data-modal="costeo">
-          <h3>¿Cuánto te cuesta hacerlo?</h3>
-          <label>¿Qué producto es?
-            <select id="costeo-producto-select" required></select>
-          </label>
-          <label>¿Cuánto gastas en materiales?
-            <input type="number" id="costeo-materia-prima" min="0" step="0.01" placeholder="0.00">
-          </label>
-          <label>¿Cuánto gastas en empaque?
-            <input type="number" id="costeo-empaque" min="0" step="0.01" placeholder="0.00">
-          </label>
-          <label>¿Cuánto vale tu trabajo?
-            <input type="number" id="costeo-mano-obra" min="0" step="0.01" placeholder="0.00">
-          </label>
-          <label>¿Algún otro gasto para hacerlo?
-            <input type="number" id="costeo-otros" min="0" step="0.01" placeholder="0.00">
-          </label>
-          <div class="modal-total">
-            En total te cuesta: <strong id="costeo-total-preview">$0.00</strong>
+          <div class="modal-header">
+            <h3>¿Cuánto te cuesta hacerlo?</h3>
+            <button type="button" class="modal-close-x" data-close-modal aria-label="Cerrar">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <label>¿Qué producto es?
+              <select id="costeo-producto-select" required></select>
+            </label>
+            <label>¿Cuánto gastas en materiales?
+              <input type="number" id="costeo-materia-prima" min="0" step="0.01" placeholder="0.00">
+            </label>
+            <label>¿Cuánto gastas en empaque?
+              <input type="number" id="costeo-empaque" min="0" step="0.01" placeholder="0.00">
+            </label>
+            <label>¿Cuánto vale tu trabajo?
+              <input type="number" id="costeo-mano-obra" min="0" step="0.01" placeholder="0.00">
+            </label>
+            <label>¿Algún otro gasto para hacerlo?
+              <input type="number" id="costeo-otros" min="0" step="0.01" placeholder="0.00">
+            </label>
+            <div class="modal-total">
+              En total te cuesta: <strong id="costeo-total-preview">$0.00</strong>
+            </div>
           </div>
           <div class="modal-actions">
             <button type="button" class="btn-secondary" data-close-modal>Cancelar</button>
@@ -282,19 +303,26 @@
         </form>
 
         <form id="form-venta" class="modal-form" data-modal="venta">
-          <h3>Vendí un producto</h3>
-          <label>¿Qué vendiste?
-            <select id="venta-producto-select" required></select>
-          </label>
-          <p class="hint-text" id="venta-costo-hint"></p>
-          <label>¿Cuántos vendiste?
-            <input type="number" id="venta-cantidad" required min="1" step="1" value="1">
-          </label>
-          <label>¿Qué día fue?
-            <input type="date" id="venta-fecha" required>
-          </label>
-          <div class="modal-total">
-            Vas a recibir: <strong id="venta-ingreso-preview">$0.00</strong>
+          <div class="modal-header">
+            <h3>Vendí un producto</h3>
+            <button type="button" class="modal-close-x" data-close-modal aria-label="Cerrar">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <label>¿Qué vendiste?
+              <select id="venta-producto-select" required></select>
+            </label>
+            <p class="hint-text" id="venta-costo-hint"></p>
+            <label>¿Cuántos vendiste?
+              <input type="number" id="venta-cantidad" required min="1" step="1" value="1">
+            </label>
+            <label>¿Qué día fue?
+              <input type="date" id="venta-fecha" required>
+            </label>
+            <div class="modal-total">
+              Vas a recibir: <strong id="venta-ingreso-preview">$0.00</strong>
+            </div>
           </div>
           <div class="modal-actions">
             <button type="button" class="btn-secondary" data-close-modal>Cancelar</button>
@@ -303,32 +331,55 @@
         </form>
 
         <form id="form-gasto" class="modal-form" data-modal="gasto">
-          <h3>Gasté en algo</h3>
-          <label>¿En qué gastaste?
-            <input type="text" id="gasto-concepto" required placeholder="Ej. Gasolina">
-          </label>
-          <label>¿Cuánto gastaste?
-            <input type="number" id="gasto-monto" required min="0" step="0.01" placeholder="0.00">
-          </label>
-          <label>¿Qué tipo de gasto fue?
-            <select id="gasto-categoria">
-              <option value="gasolina">Gasolina</option>
-              <option value="publicidad">Publicidad</option>
-              <option value="internet">Internet</option>
-              <option value="renta">Renta</option>
-              <option value="servicios">Servicios</option>
-              <option value="otros" selected>Otros</option>
-            </select>
-          </label>
-          <label>¿Qué día fue?
-            <input type="date" id="gasto-fecha" required>
-          </label>
+          <div class="modal-header">
+            <h3>Gasté en algo</h3>
+            <button type="button" class="modal-close-x" data-close-modal aria-label="Cerrar">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <label>¿En qué gastaste?
+              <input type="text" id="gasto-concepto" required placeholder="Ej. Gasolina">
+            </label>
+            <label>¿Cuánto gastaste?
+              <input type="number" id="gasto-monto" required min="0" step="0.01" placeholder="0.00">
+            </label>
+            <label>¿Qué tipo de gasto fue?
+              <select id="gasto-categoria">
+                <option value="gasolina">Gasolina</option>
+                <option value="publicidad">Publicidad</option>
+                <option value="internet">Internet</option>
+                <option value="renta">Renta</option>
+                <option value="servicios">Servicios</option>
+                <option value="otros" selected>Otros</option>
+              </select>
+            </label>
+            <label>¿Qué día fue?
+              <input type="date" id="gasto-fecha" required>
+            </label>
+          </div>
           <div class="modal-actions">
             <button type="button" class="btn-secondary" data-close-modal>Cancelar</button>
             <button type="submit" class="btn-primary">Guardar</button>
           </div>
         </form>
 
+      </div>
+
+      <!-- ===================== MODAL DE DETALLE (tarjetas) ===================== -->
+      <div id="detail-overlay" class="detail-overlay">
+        <div class="detail-dialog">
+          <div class="detail-header">
+            <h3 id="detail-title">Detalle</h3>
+            <button type="button" id="detail-close-x" class="detail-close-x" aria-label="Cerrar">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+            </button>
+          </div>
+          <div class="detail-body" id="detail-body"></div>
+          <div class="detail-footer">
+            <button type="button" id="detail-close-btn" class="btn-primary detail-close-btn">Cerrar</button>
+          </div>
+        </div>
       </div>
 
     </div>

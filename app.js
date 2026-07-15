@@ -148,6 +148,145 @@ function computeResumen(periodo) {
   return { ventasTotales, utilidadProductos, gastosGenerales, gananciaEstimada };
 }
 
+/* ============ Detalle de tarjetas (modal informativo) ============ */
+
+function periodTabLabel(periodo) {
+  if (periodo === 'dia') return 'Hoy';
+  if (periodo === 'semana') return 'Semana';
+  if (periodo === 'mes') return 'Mes';
+  return '';
+}
+
+function buildVentasDetailHtml(periodo) {
+  const ventas = data.ventas
+    .filter(v => isInPeriod(v.fecha, periodo))
+    .sort((a, b) => b.fecha.localeCompare(a.fecha));
+
+  if (ventas.length === 0) {
+    return '<p class="detail-empty">No hay ventas registradas en este período.</p>';
+  }
+
+  const total = ventas.reduce((sum, v) => sum + v.cantidad * v.precioVentaUnitario, 0);
+
+  const rows = ventas.map(v => `
+    <div class="detail-row">
+      <div class="detail-row-main">
+        <span class="detail-row-title">${escapeHtml(v.productoNombre)} × ${v.cantidad}</span>
+        <span class="detail-row-value">${formatCurrency(v.cantidad * v.precioVentaUnitario)}</span>
+      </div>
+      <div class="detail-row-sub">Precio unitario: ${formatCurrency(v.precioVentaUnitario)} · ${formatDate(v.fecha)}</div>
+    </div>
+  `).join('');
+
+  return `
+    <div class="detail-list">${rows}</div>
+    <div class="detail-total"><span>Total vendido</span><span>${formatCurrency(total)}</span></div>
+  `;
+}
+
+function buildGastosDetailHtml(periodo) {
+  const gastos = data.gastos
+    .filter(g => isInPeriod(g.fecha, periodo))
+    .sort((a, b) => b.fecha.localeCompare(a.fecha));
+
+  if (gastos.length === 0) {
+    return '<p class="detail-empty">No hay gastos registrados en este período.</p>';
+  }
+
+  const total = gastos.reduce((sum, g) => sum + g.monto, 0);
+
+  const rows = gastos.map(g => `
+    <div class="detail-row">
+      <div class="detail-row-main">
+        <span class="detail-row-title">${escapeHtml(g.concepto)}</span>
+        <span class="detail-row-value">${formatCurrency(g.monto)}</span>
+      </div>
+      <div class="detail-row-sub">${CATEGORIA_LABEL[g.categoria] || 'Otros'} · ${formatDate(g.fecha)}</div>
+    </div>
+  `).join('');
+
+  return `
+    <div class="detail-list">${rows}</div>
+    <div class="detail-total"><span>Total de gastos</span><span>${formatCurrency(total)}</span></div>
+  `;
+}
+
+function buildUtilidadDetailHtml(periodo) {
+  const ventas = data.ventas.filter(v => isInPeriod(v.fecha, periodo));
+
+  if (ventas.length === 0) {
+    return '<p class="detail-empty">No hay ventas registradas en este período.</p>';
+  }
+
+  const porProducto = {};
+  ventas.forEach(v => {
+    if (!porProducto[v.productoNombre]) {
+      porProducto[v.productoNombre] = { ingreso: 0, costo: 0 };
+    }
+    porProducto[v.productoNombre].ingreso += v.cantidad * v.precioVentaUnitario;
+    porProducto[v.productoNombre].costo += v.cantidad * v.costoTotalUnitario;
+  });
+
+  const rows = Object.entries(porProducto).map(([nombre, d]) => `
+    <div class="detail-row">
+      <div class="detail-row-main">
+        <span class="detail-row-title">${escapeHtml(nombre)}</span>
+        <span class="detail-row-value">${formatCurrency(d.ingreso - d.costo)}</span>
+      </div>
+      <div class="detail-row-sub">Ingreso: ${formatCurrency(d.ingreso)} · Costo: ${formatCurrency(d.costo)}</div>
+    </div>
+  `).join('');
+
+  const totalUtilidad = Object.values(porProducto).reduce((sum, d) => sum + (d.ingreso - d.costo), 0);
+
+  return `
+    <div class="detail-list">${rows}</div>
+    <div class="detail-total"><span>Utilidad total de productos</span><span>${formatCurrency(totalUtilidad)}</span></div>
+  `;
+}
+
+function buildGananciaDetailHtml(periodo) {
+  const r = computeResumen(periodo);
+  const costoProductos = r.ventasTotales - r.utilidadProductos;
+
+  return `
+    <div class="detail-formula">
+      <div class="detail-formula-row"><span>Ventas</span><span>${formatCurrency(r.ventasTotales)}</span></div>
+      <div class="detail-formula-row detail-formula-row--sub"><span>− Costo de productos vendidos</span><span>${formatCurrency(costoProductos)}</span></div>
+      <div class="detail-formula-row detail-formula-row--result"><span>= Utilidad de productos</span><span>${formatCurrency(r.utilidadProductos)}</span></div>
+      <div class="detail-formula-row detail-formula-row--sub"><span>− Gastos generales</span><span>${formatCurrency(r.gastosGenerales)}</span></div>
+      <div class="detail-formula-row detail-formula-row--result detail-formula-row--final"><span>= Ganancia estimada</span><span>${formatCurrency(r.gananciaEstimada)}</span></div>
+    </div>
+    <p class="detail-explainer">La ganancia estimada se calcula restando el costo de producir los productos vendidos y los gastos generales registrados.</p>
+  `;
+}
+
+const DETAIL_CONFIG = {
+  'home-ventas': { fixedPeriodo: 'dia', title: 'Ventas de hoy', build: buildVentasDetailHtml },
+  'home-gastos': { fixedPeriodo: 'dia', title: 'Gastos de hoy', build: buildGastosDetailHtml },
+  'home-ganancia': { fixedPeriodo: 'dia', title: 'Cómo se calculó tu ganancia de hoy', build: buildGananciaDetailHtml },
+  'resumen-ventas': { fixedPeriodo: null, title: 'Ventas', build: buildVentasDetailHtml },
+  'resumen-utilidad': { fixedPeriodo: null, title: 'Utilidad por producto', build: buildUtilidadDetailHtml },
+  'resumen-gastos': { fixedPeriodo: null, title: 'Gastos', build: buildGastosDetailHtml },
+  'resumen-ganancia': { fixedPeriodo: null, title: 'Cómo se calculó la ganancia estimada', build: buildGananciaDetailHtml }
+};
+
+function openDetailModal(type) {
+  const config = DETAIL_CONFIG[type];
+  if (!config) return;
+
+  const periodo = config.fixedPeriodo || currentPeriod;
+  const title = config.fixedPeriodo ? config.title : `${config.title} — ${periodTabLabel(currentPeriod)}`;
+
+  document.getElementById('detail-title').textContent = title;
+  document.getElementById('detail-body').innerHTML = config.build(periodo);
+  document.getElementById('detail-overlay').classList.add('open');
+}
+
+function closeDetailModal() {
+  document.getElementById('detail-overlay').classList.remove('open');
+}
+
 /* ============ Navegación entre pantallas ============ */
 
 function goToScreen(screen) {
@@ -466,6 +605,29 @@ document.addEventListener('DOMContentLoaded', () => {
   /* Navegación (barra inferior en móvil/tablet y barra lateral en escritorio) */
   document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.addEventListener('click', () => goToScreen(btn.dataset.screen));
+  });
+
+  /* Tarjetas clickeables: abren el modal de detalle */
+  document.querySelectorAll('[data-detail]').forEach(card => {
+    card.addEventListener('click', () => openDetailModal(card.dataset.detail));
+    card.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        openDetailModal(card.dataset.detail);
+      }
+    });
+  });
+
+  /* Cierre del modal de detalle */
+  document.getElementById('detail-close-x').addEventListener('click', closeDetailModal);
+  document.getElementById('detail-close-btn').addEventListener('click', closeDetailModal);
+  document.getElementById('detail-overlay').addEventListener('click', e => {
+    if (e.target.id === 'detail-overlay') closeDetailModal();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    closeDetailModal();
+    if (document.getElementById('modal-overlay').classList.contains('open')) closeModal();
   });
 
   /* Accesos rápidos de Inicio */

@@ -228,6 +228,39 @@ svg {
   padding: 20px;
 }
 
+.stat-card--clickable {
+  position: relative;
+  border: none;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.stat-card--clickable:hover,
+.stat-card--clickable:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 22px rgba(124, 58, 237, 0.16);
+}
+
+.stat-card--clickable:active {
+  transform: translateY(0);
+}
+
+.stat-card--clickable:focus-visible {
+  outline: 2px solid var(--color-violet);
+  outline-offset: 2px;
+}
+
+.detail-chevron {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 16px;
+  height: 16px;
+  opacity: 0.5;
+}
+
 .stat-label {
   font-size: 13px;
   font-weight: 600;
@@ -664,10 +697,11 @@ svg {
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(36, 27, 54, 0.45);
-  align-items: flex-end;
+  background: rgba(36, 27, 54, 0.5);
+  align-items: center;
   justify-content: center;
   z-index: 20;
+  padding: 20px;
 }
 
 .modal-overlay.open {
@@ -677,18 +711,53 @@ svg {
 .modal-form {
   display: none;
   flex-direction: column;
-  gap: 12px;
   background: var(--color-surface);
   width: 100%;
   max-width: 480px;
-  max-height: 88vh;
-  overflow-y: auto;
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  padding: 22px 18px calc(22px + env(safe-area-inset-bottom));
+  max-height: 85vh;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: 0 20px 50px rgba(36, 27, 54, 0.28);
 }
 
 .modal-form.active {
   display: flex;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 22px;
+  border-bottom: 1px solid #EEE6FB;
+  flex-shrink: 0;
+}
+
+.modal-header h3 {
+  font-size: 17px;
+  min-width: 0;
+}
+
+.modal-close-x {
+  border: none;
+  background: var(--color-violet-light);
+  color: var(--color-violet-dark);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.modal-body {
+  padding: 20px 22px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .modal-form label {
@@ -735,7 +804,9 @@ svg {
 .modal-actions {
   display: flex;
   gap: 10px;
-  margin-top: 6px;
+  flex-shrink: 0;
+  padding: 16px 22px calc(16px + env(safe-area-inset-bottom));
+  border-top: 1px solid #EEE6FB;
 }
 
 .btn-primary,
@@ -756,6 +827,183 @@ svg {
 .btn-secondary {
   background: var(--color-violet-light);
   color: var(--color-violet-dark);
+}
+
+/* ---------- Modal de detalle (popup centrado de las tarjetas) ---------- */
+
+.detail-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(36, 27, 54, 0.5);
+  align-items: center;
+  justify-content: center;
+  z-index: 30;
+  padding: 20px;
+}
+
+.detail-overlay.open {
+  display: flex;
+}
+
+.detail-dialog {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 520px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 50px rgba(36, 27, 54, 0.28);
+}
+
+.detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 22px;
+  border-bottom: 1px solid #EEE6FB;
+}
+
+.detail-header h3 {
+  font-size: 17px;
+  min-width: 0;
+}
+
+.detail-close-x {
+  border: none;
+  background: var(--color-violet-light);
+  color: var(--color-violet-dark);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.detail-body {
+  padding: 20px 22px;
+  overflow-y: auto;
+}
+
+.detail-footer {
+  padding: 16px 22px 20px;
+  border-top: 1px solid #EEE6FB;
+}
+
+.detail-close-btn {
+  width: 100%;
+}
+
+.detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.detail-row {
+  background: var(--color-bg);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  min-width: 0;
+}
+
+.detail-row-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.detail-row-title {
+  font-weight: 700;
+  font-size: 14px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detail-row-value {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--color-violet-dark);
+  flex-shrink: 0;
+}
+
+.detail-row-sub {
+  font-size: 12.5px;
+  color: var(--color-text-muted);
+  margin-top: 3px;
+  overflow-wrap: break-word;
+}
+
+.detail-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 14px;
+  background: var(--color-violet-light);
+  color: var(--color-violet-dark);
+  border-radius: var(--radius-md);
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.detail-empty {
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 14px;
+  padding: 20px 0;
+}
+
+.detail-formula {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.detail-formula-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.detail-formula-row--sub {
+  color: var(--color-text-muted);
+}
+
+.detail-formula-row--result {
+  background: var(--color-violet-light);
+  color: var(--color-violet-dark);
+  font-weight: 700;
+}
+
+.detail-formula-row--final {
+  background: var(--color-mint-light);
+  color: #065F46;
+  font-size: 15px;
+}
+
+.detail-explainer {
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+  background: var(--color-yellow-light);
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
 }
 
 /* ---------- Desde tablet (768px) en adelante: tarjeta de Inicio y acciones rápidas
