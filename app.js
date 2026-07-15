@@ -602,6 +602,53 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem(SIDEBAR_STORAGE_KEY, collapsed);
   });
 
+  /* Barra lateral: abrir/cerrar arrastrando el borde con el dedo o el mouse.
+     Solo se mueve mientras se arrastra; al soltar siempre cae en uno de los
+     dos tamaños fijos (contraída o expandida), nunca queda en un ancho intermedio. */
+  const sidebarCollapsedWidth = 76;
+  const getSidebarExpandedWidth = () => Math.min(190, window.innerWidth * 0.7);
+
+  let dragStartX = 0;
+  let dragStartWidth = 0;
+  let isDraggingSidebar = false;
+
+  const resizeHandle = document.getElementById('sidebar-resize-handle');
+
+  resizeHandle.addEventListener('pointerdown', e => {
+    isDraggingSidebar = true;
+    dragStartX = e.clientX;
+    dragStartWidth = sidebar.getBoundingClientRect().width;
+    sidebar.classList.add('dragging');
+    resizeHandle.setPointerCapture(e.pointerId);
+  });
+
+  resizeHandle.addEventListener('pointermove', e => {
+    if (!isDraggingSidebar) return;
+    const collapsedW = sidebarCollapsedWidth;
+    const expandedW = getSidebarExpandedWidth();
+    const delta = e.clientX - dragStartX;
+    const newWidth = Math.min(expandedW, Math.max(collapsedW, dragStartWidth + delta));
+    sidebar.style.width = `${newWidth}px`;
+  });
+
+  const endSidebarDrag = e => {
+    if (!isDraggingSidebar) return;
+    isDraggingSidebar = false;
+    sidebar.classList.remove('dragging');
+
+    const collapsedW = sidebarCollapsedWidth;
+    const expandedW = getSidebarExpandedWidth();
+    const currentWidth = sidebar.getBoundingClientRect().width;
+    const shouldCollapse = (currentWidth - collapsedW) < (expandedW - currentWidth);
+
+    sidebar.style.width = '';
+    sidebar.classList.toggle('collapsed', shouldCollapse);
+    localStorage.setItem(SIDEBAR_STORAGE_KEY, shouldCollapse);
+  };
+
+  resizeHandle.addEventListener('pointerup', endSidebarDrag);
+  resizeHandle.addEventListener('pointercancel', endSidebarDrag);
+
   /* Navegación (barra inferior en móvil/tablet y barra lateral en escritorio) */
   document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.addEventListener('click', () => goToScreen(btn.dataset.screen));
