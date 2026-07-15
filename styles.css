@@ -26,6 +26,18 @@
 
   --shadow-card: 0 6px 16px rgba(124, 58, 237, 0.08);
   --shadow-nav: 0 -4px 16px rgba(36, 27, 54, 0.08);
+
+  --content-max-width: 480px;
+  --sidebar-width: 240px;
+  --sidebar-width-collapsed: 76px;
+}
+
+@media (min-width: 768px) {
+  :root { --content-max-width: 700px; }
+}
+
+@media (min-width: 1024px) {
+  :root { --content-max-width: 1120px; }
 }
 
 * , *::before, *::after {
@@ -58,9 +70,25 @@ button {
   cursor: pointer;
 }
 
+svg {
+  display: block;
+}
+
+/* ---------- Estructura general (barra lateral + contenido) ---------- */
+
+.layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.main-content {
+  flex: 1;
+  min-width: 0;
+}
+
 .app-shell {
   position: relative;
-  max-width: 480px;
+  max-width: var(--content-max-width);
   margin: 0 auto;
   min-height: 100vh;
   background: var(--color-bg);
@@ -84,18 +112,30 @@ button {
   to { opacity: 1; transform: translateY(0); }
 }
 
+.topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.topbar-logo {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+}
+
 .topbar-eyebrow {
   font-size: 14px;
   color: var(--color-text-muted);
 }
 
 .topbar-title {
-  font-size: 22px;
-  margin-top: 4px;
+  font-size: 20px;
+  margin-top: 2px;
 }
 
 .topbar-subtitle {
-  margin-top: 4px;
+  margin-top: 10px;
   font-size: 14px;
   color: var(--color-text-muted);
 }
@@ -138,6 +178,11 @@ button {
   box-shadow: var(--shadow-card);
 }
 
+.stat-card--featured {
+  grid-column: 1 / -1;
+  padding: 20px;
+}
+
 .stat-label {
   font-size: 13px;
   font-weight: 600;
@@ -147,6 +192,17 @@ button {
 .stat-value {
   font-size: 22px;
   font-weight: 700;
+}
+
+.stat-card--featured .stat-value {
+  font-size: 30px;
+}
+
+.stat-extra {
+  font-size: 12.5px;
+  font-weight: 600;
+  opacity: 0.8;
+  margin-top: 2px;
 }
 
 .stat-card--violet {
@@ -169,7 +225,7 @@ button {
   color: #065F46;
 }
 
-/* ---------- Acciones rápidas ---------- */
+/* ---------- Acciones rápidas y botones "Agregar" ---------- */
 
 .quick-actions {
   display: flex;
@@ -185,6 +241,10 @@ button {
   font-size: 14px;
   font-weight: 700;
   color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
 }
 
 .quick-btn--pink {
@@ -194,6 +254,29 @@ button {
 .quick-btn--yellow {
   background: var(--color-yellow);
   color: #5B4200;
+}
+
+.btn-icon {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+}
+
+.add-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  border: none;
+  border-radius: 999px;
+  padding: 14px;
+  margin-bottom: 16px;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, var(--color-violet), var(--color-pink));
+  box-shadow: 0 6px 16px rgba(124, 58, 237, 0.25);
 }
 
 .link-btn {
@@ -206,22 +289,6 @@ button {
   text-decoration: underline;
   font-size: 13px;
   text-align: center;
-}
-
-/* ---------- Botón "Agregar" propio de cada pantalla ---------- */
-
-.add-btn {
-  display: block;
-  width: 100%;
-  border: none;
-  border-radius: 999px;
-  padding: 14px;
-  margin-bottom: 16px;
-  font-size: 14.5px;
-  font-weight: 700;
-  color: #fff;
-  background: linear-gradient(135deg, var(--color-violet), var(--color-pink));
-  box-shadow: 0 6px 16px rgba(124, 58, 237, 0.25);
 }
 
 /* ---------- Listas de elementos ---------- */
@@ -274,13 +341,18 @@ button {
 .icon-btn {
   border: none;
   background: var(--color-violet-light);
+  color: var(--color-violet-dark);
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  font-size: 15px;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.icon-btn svg {
+  width: 16px;
+  height: 16px;
 }
 
 .empty-hint {
@@ -295,7 +367,7 @@ button {
 
 .warning-banner {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   align-items: flex-start;
   background: var(--color-yellow-light);
   border-left: 4px solid var(--color-orange);
@@ -304,6 +376,13 @@ button {
   font-size: 13px;
   color: #7C4A03;
   margin-bottom: 16px;
+}
+
+.warning-icon {
+  width: 19px;
+  height: 19px;
+  flex-shrink: 0;
+  margin-top: 1px;
 }
 
 /* ---------- Pestañas de período ---------- */
@@ -334,7 +413,7 @@ button {
   color: #fff;
 }
 
-/* ---------- Navegación inferior ---------- */
+/* ---------- Navegación inferior (móvil y tablet) ---------- */
 
 .bottom-nav {
   position: fixed;
@@ -342,7 +421,7 @@ button {
   bottom: 0;
   transform: translateX(-50%);
   width: 100%;
-  max-width: 480px;
+  max-width: var(--content-max-width);
   height: 68px;
   background: var(--color-surface);
   box-shadow: var(--shadow-nav);
@@ -362,7 +441,7 @@ button {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 4px;
   font-size: 10.5px;
   color: var(--color-text-muted);
 }
@@ -373,7 +452,100 @@ button {
 }
 
 .nav-icon {
-  font-size: 19px;
+  width: 21px;
+  height: 21px;
+}
+
+/* ---------- Barra lateral (equipos de escritorio) ---------- */
+
+.sidebar {
+  display: none;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 18px 16px;
+  border-bottom: 1px solid #EEE6FB;
+}
+
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.brand-mark {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+}
+
+.sidebar-logo-text {
+  font-weight: 800;
+  font-size: 14px;
+  letter-spacing: 0.3px;
+  color: var(--color-violet-dark);
+  white-space: nowrap;
+}
+
+.sidebar-toggle {
+  border: none;
+  background: var(--color-violet-light);
+  color: var(--color-violet-dark);
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 12px;
+}
+
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: none;
+  background: none;
+  border-radius: 12px;
+  padding: 11px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-align: left;
+  width: 100%;
+}
+
+.sidebar-link:hover {
+  background: var(--color-violet-light);
+  color: var(--color-violet-dark);
+}
+
+.sidebar-link.active {
+  background: var(--color-violet-light);
+  color: var(--color-violet-dark);
+}
+
+.sidebar-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.sidebar-link-label {
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 /* ---------- Modales ---------- */
@@ -476,13 +648,78 @@ button {
   color: var(--color-violet-dark);
 }
 
-/* ---------- Pantallas más anchas (tablet / escritorio) ---------- */
+/* ---------- Tablets: aprovechar mejor el ancho, misma navegación inferior ---------- */
 
-@media (min-width: 420px) {
+@media (min-width: 480px) {
   .home-cards {
     grid-template-columns: 1fr 1fr;
   }
-  .home-cards .stat-card:first-child {
-    grid-column: span 2;
+}
+
+@media (min-width: 768px) {
+  .resumen-cards {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* ---------- Escritorio: sistema administrativo con barra lateral ---------- */
+
+@media (min-width: 1024px) {
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+    width: var(--sidebar-width);
+    flex-shrink: 0;
+    background: var(--color-surface);
+    border-right: 1px solid #EEE6FB;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    transition: width 0.18s ease;
+  }
+
+  .sidebar.collapsed {
+    width: var(--sidebar-width-collapsed);
+  }
+
+  .sidebar.collapsed .sidebar-header {
+    flex-direction: column;
+    padding: 16px 8px;
+  }
+
+  .sidebar.collapsed .sidebar-logo-text,
+  .sidebar.collapsed .sidebar-link-label {
+    display: none;
+  }
+
+  .sidebar.collapsed .sidebar-link {
+    justify-content: center;
+    padding: 11px;
+  }
+
+  .bottom-nav {
+    display: none;
+  }
+
+  .app-shell {
+    padding-bottom: 40px;
+  }
+
+  .screen {
+    padding: 32px 40px 40px;
+  }
+
+  .item-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  }
+
+  .add-btn {
+    width: auto;
+    padding: 13px 30px;
+  }
+
+  .warning-banner {
+    max-width: 640px;
   }
 }

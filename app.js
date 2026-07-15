@@ -2,9 +2,16 @@
    Almacenamiento: localStorage. Sin frameworks, sin librerías externas. */
 
 const STORAGE_KEY = 'emprendedoresAppServis_v1';
+const SIDEBAR_STORAGE_KEY = 'emprendedoresAppServis_sidebar_collapsed';
 
 let currentScreen = 'inicio';
 let currentPeriod = 'dia';
+
+/* ============ Iconos (SVG en línea, sin emojis ni imágenes externas) ============ */
+
+const ICON_PENCIL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20l.9-3.6L16.4 5a1.5 1.5 0 0 1 2.1 0l1.5 1.5a1.5 1.5 0 0 1 0 2.1L8.5 20.1 4 20z"/><path d="M14.5 6.5l3 3"/></svg>';
+
+const ICON_TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16"/><path d="M9 7V4.8c0-.4.4-.8.9-.8h4.2c.5 0 .9.4.9.8V7"/><path d="M6.5 7l.7 12.2c0 .95.8 1.8 1.8 1.8h6c1 0 1.8-.85 1.8-1.8L17.5 7"/><path d="M10 11v6M14 11v6"/></svg>';
 
 /* ============ Utilidades generales ============ */
 
@@ -176,6 +183,10 @@ function renderInicio() {
   document.getElementById('home-ventas').textContent = formatCurrency(r.ventasTotales);
   document.getElementById('home-gastos').textContent = formatCurrency(r.gastosGenerales);
   document.getElementById('home-ganancia').textContent = formatCurrency(r.gananciaEstimada);
+
+  const numVentasHoy = data.ventas.filter(v => isInPeriod(v.fecha, 'dia')).length;
+  document.getElementById('home-ventas-count').textContent =
+    numVentasHoy === 1 ? '1 venta hoy' : `${numVentasHoy} ventas hoy`;
 }
 
 /* ============ Render: Productos ============ */
@@ -198,8 +209,8 @@ function renderProductos() {
         <span class="item-subtitle">${formatCurrency(p.precioVenta)}</span>
       </div>
       <div class="item-actions">
-        <button type="button" class="icon-btn" data-action="editar-producto" data-id="${p.id}" aria-label="Editar">✏️</button>
-        <button type="button" class="icon-btn" data-action="eliminar-producto" data-id="${p.id}" aria-label="Eliminar">🗑️</button>
+        <button type="button" class="icon-btn" data-action="editar-producto" data-id="${p.id}" aria-label="Editar">${ICON_PENCIL}</button>
+        <button type="button" class="icon-btn" data-action="eliminar-producto" data-id="${p.id}" aria-label="Eliminar">${ICON_TRASH}</button>
       </div>
     </li>
   `).join('');
@@ -228,7 +239,7 @@ function renderCosteo() {
           <span class="item-subtitle">${subtitle}</span>
         </div>
         <div class="item-actions">
-          <button type="button" class="icon-btn" data-action="editar-costeo" data-id="${p.id}" aria-label="Editar costeo">✏️</button>
+          <button type="button" class="icon-btn" data-action="editar-costeo" data-id="${p.id}" aria-label="Editar costeo">${ICON_PENCIL}</button>
         </div>
       </li>
     `;
@@ -256,7 +267,7 @@ function renderVentas() {
         <span class="item-subtitle">${formatDate(v.fecha)} · ${formatCurrency(v.cantidad * v.precioVentaUnitario)}</span>
       </div>
       <div class="item-actions">
-        <button type="button" class="icon-btn" data-action="eliminar-venta" data-id="${v.id}" aria-label="Eliminar">🗑️</button>
+        <button type="button" class="icon-btn" data-action="eliminar-venta" data-id="${v.id}" aria-label="Eliminar">${ICON_TRASH}</button>
       </div>
     </li>
   `).join('');
@@ -292,7 +303,7 @@ function renderGastos() {
         <span class="item-subtitle">${formatDate(g.fecha)} · ${CATEGORIA_LABEL[g.categoria] || 'Otros'} · ${formatCurrency(g.monto)}</span>
       </div>
       <div class="item-actions">
-        <button type="button" class="icon-btn" data-action="eliminar-gasto" data-id="${g.id}" aria-label="Eliminar">🗑️</button>
+        <button type="button" class="icon-btn" data-action="eliminar-gasto" data-id="${g.id}" aria-label="Eliminar">${ICON_TRASH}</button>
       </div>
     </li>
   `).join('');
@@ -436,7 +447,17 @@ function eliminarGasto(id) {
 document.addEventListener('DOMContentLoaded', () => {
   renderAll();
 
-  /* Navegación inferior */
+  /* Barra lateral: recordar si el usuario la dejó contraída o expandida */
+  const sidebar = document.getElementById('sidebar');
+  if (localStorage.getItem(SIDEBAR_STORAGE_KEY) === 'true') {
+    sidebar.classList.add('collapsed');
+  }
+  document.getElementById('sidebar-toggle').addEventListener('click', () => {
+    const collapsed = sidebar.classList.toggle('collapsed');
+    localStorage.setItem(SIDEBAR_STORAGE_KEY, collapsed);
+  });
+
+  /* Navegación (barra inferior en móvil/tablet y barra lateral en escritorio) */
   document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.addEventListener('click', () => goToScreen(btn.dataset.screen));
   });
