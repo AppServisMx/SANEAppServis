@@ -954,10 +954,7 @@ function mensajeErrorAuth(code) {
     'auth/too-many-requests': 'Demasiados intentos. Espera un momento e intenta de nuevo.',
     'auth/unauthorized-domain': 'Este sitio todavía no está autorizado en Firebase. Avísale al desarrollador.'
   };
-  const base = mensajes[code] || 'Ocurrió un error. Intenta de nuevo.';
-  // Se muestra el código técnico entre paréntesis para poder copiarlo y
-  // reportarlo sin necesidad de abrir las herramientas de desarrollador.
-  return code ? `${base} (código: ${code})` : base;
+  return mensajes[code] || 'Ocurrió un error. Intenta de nuevo.';
 }
 
 async function ensureUserDoc(user) {
