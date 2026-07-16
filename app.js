@@ -1,13 +1,24 @@
 /* SANE - Sistema Administrativo para Nuevos Emprendedores (desarrollado por App Servis)
-   Almacenamiento: localStorage. Sin frameworks, sin librerías externas. */
+   FASE 2: cuentas reales (Firebase Authentication) y datos en la nube (Cloud Firestore).
+   Sin frameworks, sin librerías externas más que el SDK de Firebase. */
 
-const STORAGE_KEY = 'emprendedoresAppServis_v1';
+import {
+  auth, db,
+  onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+  sendPasswordResetEmail, signOut, updateProfile,
+  doc, getDoc, setDoc, deleteDoc, collection, onSnapshot,
+  serverTimestamp, writeBatch
+} from './firebase.js';
+
+const STORAGE_KEY = 'emprendedoresAppServis_v1'; // datos locales de versiones anteriores (para migración)
 const SIDEBAR_STORAGE_KEY = 'emprendedoresAppServis_sidebar_collapsed';
 const PLAN_STORAGE_KEY = 'saneAppServis_plan_dev';
 
 let currentScreen = 'inicio';
 let currentPeriod = 'dia';
 let insumoRowCounter = 0;
+let currentUser = null;
+let dataUnsubscribers = [];
 
 /* ============ Iconos (SVG en línea, sin emojis ni imágenes externas) ============ */
 
@@ -58,76 +69,72 @@ function offsetDateStr(daysAgo) {
   return toDateStr(d);
 }
 
-/* ============ Datos de demostración ============ */
+/* ============ Datos (en memoria, sincronizados con Firestore) ============ */
 
-function getDefaultData() {
-  // Negocio de ejemplo: "Dulces Detalles", venta de pasteles, gelatinas y arreglos de dulces.
-  const p1 = uid();
-  const p2 = uid();
-  const p3 = uid();
+let data = { productos: [], costeos: [], ventas: [], gastos: [], insumos: [], costeoDetallado: [] };
 
-  const productos = [
-    { id: p1, nombre: 'Pastel de chocolate', precioVenta: 180 },
-    { id: p2, nombre: 'Gelatinas de mosaico (paquete de 6)', precioVenta: 90 },
-    { id: p3, nombre: 'Arreglo de dulces', precioVenta: 150 }
-  ];
-
-  const costeos = [
-    { productoId: p1, materiaPrima: 45, empaque: 8, manoObra: 30, otrosCostos: 5 },
-    { productoId: p2, materiaPrima: 25, empaque: 5, manoObra: 15, otrosCostos: 3 },
-    { productoId: p3, materiaPrima: 60, empaque: 10, manoObra: 20, otrosCostos: 5 }
-  ];
-
-  const ventas = [
-    { id: uid(), productoId: p1, productoNombre: productos[0].nombre, cantidad: 1, precioVentaUnitario: 180, costoTotalUnitario: 88, fecha: offsetDateStr(0) },
-    { id: uid(), productoId: p2, productoNombre: productos[1].nombre, cantidad: 2, precioVentaUnitario: 90, costoTotalUnitario: 48, fecha: offsetDateStr(0) },
-    { id: uid(), productoId: p3, productoNombre: productos[2].nombre, cantidad: 1, precioVentaUnitario: 150, costoTotalUnitario: 95, fecha: offsetDateStr(1) },
-    { id: uid(), productoId: p1, productoNombre: productos[0].nombre, cantidad: 1, precioVentaUnitario: 180, costoTotalUnitario: 88, fecha: offsetDateStr(3) },
-    { id: uid(), productoId: p2, productoNombre: productos[1].nombre, cantidad: 3, precioVentaUnitario: 90, costoTotalUnitario: 48, fecha: offsetDateStr(6) },
-    { id: uid(), productoId: p3, productoNombre: productos[2].nombre, cantidad: 2, precioVentaUnitario: 150, costoTotalUnitario: 95, fecha: offsetDateStr(10) }
-  ];
-
-  const gastos = [
-    { id: uid(), concepto: 'Gasolina para entregas', monto: 100, categoria: 'gasolina', fecha: offsetDateStr(0) },
-    { id: uid(), concepto: 'Internet del mes', monto: 300, categoria: 'internet', fecha: offsetDateStr(2) },
-    { id: uid(), concepto: 'Renta del local', monto: 1500, categoria: 'renta', fecha: offsetDateStr(8) },
-    { id: uid(), concepto: 'Anuncios en redes sociales', monto: 250, categoria: 'publicidad', fecha: offsetDateStr(12) }
-  ];
-
-  // Insumos de ejemplo (función Pro): lo que se compra para hacer los productos.
-  const insumos = [
-    { id: uid(), nombre: 'Harina', categoria: 'masa', unidadCompra: 'kg', cantidadComprada: 1, precioPagado: 25, proveedor: 'Central de abastos' },
-    { id: uid(), nombre: 'Chocolate', categoria: 'masa', unidadCompra: 'kg', cantidadComprada: 1, precioPagado: 120, proveedor: '' },
-    { id: uid(), nombre: 'Leche', categoria: 'volumen', unidadCompra: 'lt', cantidadComprada: 1, precioPagado: 22, proveedor: '' },
-    { id: uid(), nombre: 'Huevo', categoria: 'pieza', unidadCompra: 'pza', cantidadComprada: 12, precioPagado: 42, proveedor: '' }
-  ];
-
-  const costeoDetallado = [];
-
-  return { productos, costeos, ventas, gastos, insumos, costeoDetallado };
+function vaciarData() {
+  data = { productos: [], costeos: [], ventas: [], gastos: [], insumos: [], costeoDetallado: [] };
 }
 
-/* ============ Persistencia ============ */
+/* ============ Persistencia en Firestore (usuarios/{uid}/...) ============ */
 
-function loadData() {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) {
-    const demo = getDefaultData();
-    saveData(demo);
-    return demo;
-  }
-  const parsed = JSON.parse(raw);
-  // Compatibilidad con datos guardados antes de que existiera Mis Insumos / Costeo Detallado.
-  if (!parsed.insumos) parsed.insumos = [];
-  if (!parsed.costeoDetallado) parsed.costeoDetallado = [];
-  return parsed;
+const COLECCIONES = ['productos', 'insumos', 'costeos', 'costeoDetallado', 'ventas', 'gastos'];
+
+function usuarioRef(uid) {
+  return doc(db, 'usuarios', uid);
 }
 
-function saveData(d) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(d));
+function coleccionRef(uid, nombre) {
+  return collection(db, 'usuarios', uid, nombre);
 }
 
-let data = loadData();
+function documentoRef(uid, nombre, id) {
+  return doc(db, 'usuarios', uid, nombre, id);
+}
+
+function guardarProducto(p) { return setDoc(documentoRef(currentUser.uid, 'productos', p.id), p); }
+function borrarProductoRemoto(id) { return deleteDoc(documentoRef(currentUser.uid, 'productos', id)); }
+
+function guardarCosteo(c) { return setDoc(documentoRef(currentUser.uid, 'costeos', c.productoId), c); }
+function borrarCosteoRemoto(productoId) { return deleteDoc(documentoRef(currentUser.uid, 'costeos', productoId)); }
+
+function guardarCosteoDetallado(c) { return setDoc(documentoRef(currentUser.uid, 'costeoDetallado', c.productoId), c); }
+function borrarCosteoDetalladoRemoto(productoId) { return deleteDoc(documentoRef(currentUser.uid, 'costeoDetallado', productoId)); }
+
+function guardarInsumo(i) { return setDoc(documentoRef(currentUser.uid, 'insumos', i.id), i); }
+function borrarInsumoRemoto(id) { return deleteDoc(documentoRef(currentUser.uid, 'insumos', id)); }
+
+function guardarVenta(v) { return setDoc(documentoRef(currentUser.uid, 'ventas', v.id), v); }
+function borrarVentaRemoto(id) { return deleteDoc(documentoRef(currentUser.uid, 'ventas', id)); }
+
+function guardarGasto(g) { return setDoc(documentoRef(currentUser.uid, 'gastos', g.id), g); }
+function borrarGastoRemoto(id) { return deleteDoc(documentoRef(currentUser.uid, 'gastos', id)); }
+
+/* Escucha en tiempo real las 6 colecciones del usuario: cualquier cambio (hecho desde
+   este dispositivo o desde otro) actualiza "data" y vuelve a dibujar la pantalla.
+   Así se logra la sincronización automática, sin botón "Guardar". */
+function attachDataListeners(uid) {
+  detachDataListeners();
+  const primerasCargas = COLECCIONES.map(nombre => new Promise(resolve => {
+    let yaResolvio = false;
+    const unsub = onSnapshot(coleccionRef(uid, nombre), snap => {
+      data[nombre] = snap.docs.map(d => d.data());
+      renderAll();
+      if (!yaResolvio) { yaResolvio = true; resolve(); }
+    });
+    dataUnsubscribers.push(unsub);
+  }));
+  document.getElementById('data-loading-overlay').classList.add('open');
+  Promise.all(primerasCargas).then(() => {
+    document.getElementById('data-loading-overlay').classList.remove('open');
+  });
+}
+
+function detachDataListeners() {
+  dataUnsubscribers.forEach(unsub => unsub());
+  dataUnsubscribers = [];
+}
 
 /* ============ Cálculos de negocio ============ */
 
@@ -695,12 +702,12 @@ function cambiarModoCosteo(productoId) {
       return;
     }
     producto.usaCosteoDetallado = true;
-    saveData(data);
+    guardarProducto(producto);
     renderCosteo();
     openCosteoDetalladoModal(productoId);
   } else {
     producto.usaCosteoDetallado = false;
-    saveData(data);
+    guardarProducto(producto);
     renderCosteo();
     openCosteoModal(productoId);
   }
@@ -892,10 +899,14 @@ function openGastoModal() {
 
 function eliminarProducto(id) {
   if (!confirm('¿Seguro que quieres borrar este producto? No podrás recuperarlo.')) return;
+  const teniaCosteo = data.costeos.some(c => c.productoId === id);
+  const teniaCosteoDetallado = data.costeoDetallado.some(c => c.productoId === id);
   data.productos = data.productos.filter(p => p.id !== id);
   data.costeos = data.costeos.filter(c => c.productoId !== id);
   data.costeoDetallado = data.costeoDetallado.filter(c => c.productoId !== id);
-  saveData(data);
+  borrarProductoRemoto(id);
+  if (teniaCosteo) borrarCosteoRemoto(id);
+  if (teniaCosteoDetallado) borrarCosteoDetalladoRemoto(id);
   renderProductos();
   renderCosteo();
 }
@@ -903,10 +914,12 @@ function eliminarProducto(id) {
 function eliminarInsumo(id) {
   if (!confirm('¿Seguro que quieres borrar este insumo? No podrás recuperarlo.')) return;
   data.insumos = data.insumos.filter(i => i.id !== id);
+  borrarInsumoRemoto(id);
   data.costeoDetallado.forEach(cd => {
+    const totalAntes = cd.items.length;
     cd.items = cd.items.filter(item => item.insumoId !== id);
+    if (cd.items.length !== totalAntes) guardarCosteoDetallado(cd);
   });
-  saveData(data);
   renderInsumos();
   renderCosteo();
 }
@@ -914,7 +927,7 @@ function eliminarInsumo(id) {
 function eliminarVenta(id) {
   if (!confirm('¿Seguro que quieres borrar esta venta?')) return;
   data.ventas = data.ventas.filter(v => v.id !== id);
-  saveData(data);
+  borrarVentaRemoto(id);
   renderVentas();
   renderInicio();
 }
@@ -922,15 +935,195 @@ function eliminarVenta(id) {
 function eliminarGasto(id) {
   if (!confirm('¿Seguro que quieres borrar este gasto?')) return;
   data.gastos = data.gastos.filter(g => g.id !== id);
-  saveData(data);
+  borrarGastoRemoto(id);
   renderGastos();
   renderInicio();
 }
+
+/* ============ Cuentas (Firebase Authentication) ============ */
+
+function mensajeErrorAuth(code) {
+  const mensajes = {
+    'auth/email-already-in-use': 'Ese correo ya tiene una cuenta. Intenta iniciar sesión.',
+    'auth/invalid-email': 'Ese correo no es válido.',
+    'auth/weak-password': 'La contraseña es muy débil, usa al menos 6 caracteres.',
+    'auth/missing-password': 'Escribe tu contraseña.',
+    'auth/user-not-found': 'Correo o contraseña incorrectos.',
+    'auth/wrong-password': 'Correo o contraseña incorrectos.',
+    'auth/invalid-credential': 'Correo o contraseña incorrectos.',
+    'auth/too-many-requests': 'Demasiados intentos. Espera un momento e intenta de nuevo.',
+    'auth/unauthorized-domain': 'Este sitio todavía no está autorizado en Firebase. Avísale al desarrollador.'
+  };
+  return mensajes[code] || 'Ocurrió un error. Intenta de nuevo.';
+}
+
+async function ensureUserDoc(user) {
+  const ref = usuarioRef(user.uid);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) {
+    await setDoc(ref, {
+      nombre: user.displayName || '',
+      correo: user.email || '',
+      plan: 'basico',
+      estado: 'activo',
+      fechaAlta: serverTimestamp(),
+      fechaActualizacion: serverTimestamp()
+    });
+  }
+}
+
+function actualizarAccountBarUI(user) {
+  document.getElementById('account-bar-nombre').textContent = user.displayName || user.email || '';
+}
+
+/* ============ Migración de datos guardados en este dispositivo antes de tener cuenta ============ */
+
+function checkMigration(uid) {
+  const flagKey = `sane_migracion_${uid}`;
+  if (localStorage.getItem(flagKey)) return;
+
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) { localStorage.setItem(flagKey, 'sin_datos'); return; }
+
+  let local;
+  try { local = JSON.parse(raw); } catch { localStorage.setItem(flagKey, 'sin_datos'); return; }
+
+  const totalRegistros = (local.productos || []).length + (local.insumos || []).length +
+    (local.costeos || []).length + (local.costeoDetallado || []).length +
+    (local.ventas || []).length + (local.gastos || []).length;
+  if (totalRegistros === 0) { localStorage.setItem(flagKey, 'sin_datos'); return; }
+
+  const overlay = document.getElementById('migration-overlay');
+  overlay.classList.add('open');
+
+  document.getElementById('migration-si').onclick = async () => {
+    overlay.classList.remove('open');
+    await migrarDatosLocales(uid, local);
+    localStorage.setItem(flagKey, 'migrado');
+  };
+  document.getElementById('migration-no').onclick = () => {
+    overlay.classList.remove('open');
+    localStorage.setItem(flagKey, 'rechazado');
+  };
+}
+
+async function migrarDatosLocales(uid, local) {
+  const batch = writeBatch(db);
+  (local.productos || []).forEach(p => batch.set(documentoRef(uid, 'productos', p.id), p));
+  (local.insumos || []).forEach(i => batch.set(documentoRef(uid, 'insumos', i.id), i));
+  (local.costeos || []).forEach(c => batch.set(documentoRef(uid, 'costeos', c.productoId), c));
+  (local.costeoDetallado || []).forEach(c => batch.set(documentoRef(uid, 'costeoDetallado', c.productoId), c));
+  (local.ventas || []).forEach(v => batch.set(documentoRef(uid, 'ventas', v.id), v));
+  (local.gastos || []).forEach(g => batch.set(documentoRef(uid, 'gastos', g.id), g));
+  await batch.commit();
+}
+
+/* Reacciona a cualquier cambio de sesión: entrar, salir, o que Firebase confirme
+   al cargar la página si ya había una sesión guardada en este dispositivo. */
+onAuthStateChanged(auth, async user => {
+  if (user) {
+    currentUser = user;
+    document.body.classList.remove('state-loading', 'state-auth');
+    document.body.classList.add('state-app');
+    actualizarAccountBarUI(user);
+    await ensureUserDoc(user);
+    attachDataListeners(user.uid);
+    checkMigration(user.uid);
+  } else {
+    currentUser = null;
+    detachDataListeners();
+    vaciarData();
+    document.body.classList.remove('state-loading', 'state-app');
+    document.body.classList.add('state-auth');
+    renderAll();
+  }
+});
 
 /* ============ Inicialización ============ */
 
 document.addEventListener('DOMContentLoaded', () => {
   renderAll();
+
+  /* Puerta de acceso: pestañas login / crear cuenta, y enlaces hacia recuperar contraseña */
+  function mostrarAuthTab(tab) {
+    document.querySelectorAll('.auth-tab').forEach(t => t.classList.toggle('active', t.dataset.authTab === tab));
+    document.querySelectorAll('.auth-form').forEach(f => f.classList.toggle('active', f.dataset.authForm === tab));
+  }
+  document.querySelectorAll('[data-auth-tab]').forEach(btn => {
+    btn.addEventListener('click', () => mostrarAuthTab(btn.dataset.authTab));
+  });
+
+  /* Registro de usuario */
+  document.getElementById('form-registro').addEventListener('submit', async e => {
+    e.preventDefault();
+    const nombre = document.getElementById('registro-nombre').value.trim();
+    const correo = document.getElementById('registro-correo').value.trim();
+    const password = document.getElementById('registro-password').value;
+    const password2 = document.getElementById('registro-password2').value;
+    const errorEl = document.getElementById('registro-error');
+    errorEl.textContent = '';
+
+    if (!nombre) { errorEl.textContent = 'Escribe tu nombre.'; return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) { errorEl.textContent = 'Escribe un correo válido.'; return; }
+    if (password.length < 6) { errorEl.textContent = 'La contraseña debe tener al menos 6 caracteres.'; return; }
+    if (password !== password2) { errorEl.textContent = 'Las contraseñas no coinciden.'; return; }
+
+    const btn = e.target.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, correo, password);
+      await updateProfile(cred.user, { displayName: nombre });
+      await setDoc(usuarioRef(cred.user.uid), {
+        nombre, correo, plan: 'basico', estado: 'activo',
+        fechaAlta: serverTimestamp(), fechaActualizacion: serverTimestamp()
+      });
+    } catch (err) {
+      errorEl.textContent = mensajeErrorAuth(err.code);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  /* Inicio de sesión */
+  document.getElementById('form-login').addEventListener('submit', async e => {
+    e.preventDefault();
+    const correo = document.getElementById('login-correo').value.trim();
+    const password = document.getElementById('login-password').value;
+    const errorEl = document.getElementById('login-error');
+    errorEl.textContent = '';
+    const btn = e.target.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    try {
+      await signInWithEmailAndPassword(auth, correo, password);
+    } catch (err) {
+      errorEl.textContent = mensajeErrorAuth(err.code);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  /* Recuperar contraseña */
+  document.getElementById('form-reset').addEventListener('submit', async e => {
+    e.preventDefault();
+    const correo = document.getElementById('reset-correo').value.trim();
+    const msgEl = document.getElementById('reset-mensaje');
+    msgEl.textContent = '';
+    msgEl.className = 'auth-message';
+    try {
+      await sendPasswordResetEmail(auth, correo);
+      msgEl.textContent = 'Listo. Revisa tu correo para restablecer tu contraseña.';
+      msgEl.classList.add('auth-message--ok');
+    } catch (err) {
+      msgEl.textContent = mensajeErrorAuth(err.code);
+      msgEl.classList.add('auth-message--error');
+    }
+  });
+
+  /* Cerrar sesión */
+  document.getElementById('btn-logout').addEventListener('click', () => {
+    if (!confirm('¿Seguro que quieres cerrar sesión?')) return;
+    signOut(auth);
+  });
 
   /* Barra lateral: recordar si el usuario la dejó contraída o expandida.
      Si nunca la ha ajustado, arranca contraída en pantallas angostas para no
@@ -1100,10 +1293,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const p = data.productos.find(p => p.id === id);
       p.nombre = nombre;
       p.precioVenta = precioVenta;
+      guardarProducto(p);
     } else {
-      data.productos.push({ id: uid(), nombre, precioVenta });
+      const nuevo = { id: uid(), nombre, precioVenta };
+      data.productos.push(nuevo);
+      guardarProducto(nuevo);
     }
-    saveData(data);
     closeModal();
     renderProductos();
     renderCosteo();
@@ -1130,10 +1325,12 @@ document.addEventListener('DOMContentLoaded', () => {
       existente.empaque = empaque;
       existente.manoObra = manoObra;
       existente.otrosCostos = otrosCostos;
+      guardarCosteo(existente);
     } else {
-      data.costeos.push({ productoId, materiaPrima, empaque, manoObra, otrosCostos });
+      const nuevo = { productoId, materiaPrima, empaque, manoObra, otrosCostos };
+      data.costeos.push(nuevo);
+      guardarCosteo(nuevo);
     }
-    saveData(data);
     closeModal();
     renderCosteo();
   });
@@ -1151,7 +1348,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const costoUnitario = getCostoUnitarioProducto(productoId);
 
-    data.ventas.push({
+    const nuevaVenta = {
       id: uid(),
       productoId,
       productoNombre: producto.nombre,
@@ -1159,8 +1356,9 @@ document.addEventListener('DOMContentLoaded', () => {
       precioVentaUnitario: producto.precioVenta,
       costoTotalUnitario: costoUnitario,
       fecha
-    });
-    saveData(data);
+    };
+    data.ventas.push(nuevaVenta);
+    guardarVenta(nuevaVenta);
     closeModal();
     renderVentas();
     renderInicio();
@@ -1175,8 +1373,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const fecha = document.getElementById('gasto-fecha').value;
     if (!concepto || isNaN(monto) || monto < 0 || !fecha) return;
 
-    data.gastos.push({ id: uid(), concepto, monto, categoria, fecha });
-    saveData(data);
+    const nuevoGasto = { id: uid(), concepto, monto, categoria, fecha };
+    data.gastos.push(nuevoGasto);
+    guardarGasto(nuevoGasto);
     closeModal();
     renderGastos();
     renderInicio();
@@ -1208,10 +1407,12 @@ document.addEventListener('DOMContentLoaded', () => {
       i.cantidadComprada = cantidadComprada;
       i.precioPagado = precioPagado;
       i.proveedor = proveedor;
+      guardarInsumo(i);
     } else {
-      data.insumos.push({ id: uid(), nombre, unidadCompra, categoria, cantidadComprada, precioPagado, proveedor });
+      const nuevo = { id: uid(), nombre, unidadCompra, categoria, cantidadComprada, precioPagado, proveedor };
+      data.insumos.push(nuevo);
+      guardarInsumo(nuevo);
     }
-    saveData(data);
     closeModal();
     renderInsumos();
   });
@@ -1238,10 +1439,12 @@ document.addEventListener('DOMContentLoaded', () => {
       existente.empaque = empaque;
       existente.manoObra = manoObra;
       existente.rendimiento = rendimiento;
+      guardarCosteoDetallado(existente);
     } else {
-      data.costeoDetallado.push({ productoId, items, empaque, manoObra, rendimiento });
+      const nuevo = { productoId, items, empaque, manoObra, rendimiento };
+      data.costeoDetallado.push(nuevo);
+      guardarCosteoDetallado(nuevo);
     }
-    saveData(data);
     closeModal();
     renderCosteo();
   });
@@ -1270,11 +1473,18 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.addEventListener('click', () => goToScreen('inicio'));
   });
 
-  /* Borrar datos de demostración */
-  document.getElementById('btn-reset-demo').addEventListener('click', () => {
-    if (!confirm('¿Seguro que quieres borrar estos datos de ejemplo y empezar desde cero? No podrás recuperarlos.')) return;
-    data = { productos: [], costeos: [], ventas: [], gastos: [], insumos: [], costeoDetallado: [] };
-    saveData(data);
+  /* Borrar todos los datos y empezar desde cero */
+  document.getElementById('btn-reset-demo').addEventListener('click', async () => {
+    if (!confirm('¿Seguro que quieres borrar todos tus datos y empezar desde cero? No podrás recuperarlos.')) return;
+    const batch = writeBatch(db);
+    data.productos.forEach(p => batch.delete(documentoRef(currentUser.uid, 'productos', p.id)));
+    data.insumos.forEach(i => batch.delete(documentoRef(currentUser.uid, 'insumos', i.id)));
+    data.costeos.forEach(c => batch.delete(documentoRef(currentUser.uid, 'costeos', c.productoId)));
+    data.costeoDetallado.forEach(c => batch.delete(documentoRef(currentUser.uid, 'costeoDetallado', c.productoId)));
+    data.ventas.forEach(v => batch.delete(documentoRef(currentUser.uid, 'ventas', v.id)));
+    data.gastos.forEach(g => batch.delete(documentoRef(currentUser.uid, 'gastos', g.id)));
+    await batch.commit();
+    vaciarData();
     renderAll();
   });
 });
