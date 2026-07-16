@@ -1018,20 +1018,80 @@ async function migrarDatosLocales(uid, local) {
   await batch.commit();
 }
 
-/* Reacciona a cualquier cambio de sesión: entrar, salir, o que Firebase confirme
-   al cargar la página si ya había una sesión guardada en este dispositivo. */
-/* El logo de la pantalla de carga se "dibuja" de abajo hacia arriba durante
-   este tiempo; se espera a que termine antes de dejar entrar al usuario,
-   sin importar qué tan rápido responda Firebase. */
-const SPLASH_MINIMO_MS = 1900;
-const splashMinimo = new Promise(resolve => setTimeout(resolve, SPLASH_MINIMO_MS));
+/* ============ Animación de bienvenida (solo tras registro/login correcto) ============ */
 
+const BIENVENIDA_DIBUJAR_MS = 1400;
+const BIENVENIDA_RESPIRAR_MS = 700;
+const BIENVENIDA_TEXTO_MS = 600;
+const BIENVENIDA_ESPERA_MS = 300;
+
+// Se activa justo antes de intentar un login/registro real; onAuthStateChanged
+// la consulta una sola vez y la apaga, así que nunca se dispara al cargar la
+// página ni al restaurar una sesión ya iniciada (solo en una entrada real).
+let mostrarBienvenidaAlEntrar = false;
+
+function reproducirBienvenida() {
+  const overlay = document.getElementById('welcome-overlay');
+  const logo = document.getElementById('welcome-logo');
+  const texto = document.getElementById('welcome-text');
+  const prefiereMovimientoReducido = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  overlay.classList.add('open');
+
+  if (prefiereMovimientoReducido) {
+    logo.classList.remove('dibujando', 'respirando');
+    logo.classList.add('dibujado');
+    texto.classList.add('mostrar');
+    return new Promise(resolve => setTimeout(() => {
+      overlay.classList.remove('open');
+      resolve();
+    }, 500));
+  }
+
+  texto.classList.remove('mostrar');
+  logo.classList.remove('dibujando', 'dibujado', 'respirando');
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      logo.classList.add('dibujando');
+    });
+  });
+
+  return new Promise(resolve => {
+    setTimeout(() => {
+      // "dibujado" deja el resultado fijo con una propiedad normal, para que no
+      // se pierda cuando "respirando" defina su propia animación de transform.
+      logo.classList.add('dibujado');
+      logo.classList.add('respirando');
+    }, BIENVENIDA_DIBUJAR_MS);
+    setTimeout(() => texto.classList.add('mostrar'), BIENVENIDA_DIBUJAR_MS + BIENVENIDA_RESPIRAR_MS - 250);
+    setTimeout(() => {
+      overlay.classList.remove('open');
+      resolve();
+    }, BIENVENIDA_DIBUJAR_MS + BIENVENIDA_RESPIRAR_MS + BIENVENIDA_TEXTO_MS + BIENVENIDA_ESPERA_MS - 250);
+  });
+}
+
+/* Reacciona a cualquier cambio de sesión: entrar, salir, o que Firebase confirme
+   al cargar la página si ya había una sesión guardada en este dispositivo.
+   La animación de bienvenida SOLO se reproduce cuando "mostrarBienvenidaAlEntrar"
+   fue activada por un login/registro real (ver los formularios más abajo);
+   nunca al cargar la página ni al restaurar una sesión existente. */
 onAuthStateChanged(auth, async user => {
   if (user) {
     currentUser = user;
-    await ensureUserDoc(user);
+    const debeMostrarBienvenida = mostrarBienvenidaAlEntrar;
+    mostrarBienvenidaAlEntrar = false;
+
+    try {
+      await ensureUserDoc(user);
+    } catch (e) {
+      // No dejar la animación ni la entrada congeladas si falla este paso;
+      // los listeners de Firestore reintentan por su cuenta.
+    }
     attachDataListeners(user.uid);
-    await splashMinimo;
+
+    if (debeMostrarBienvenida) await reproducirBienvenida();
+
     document.body.classList.remove('state-loading', 'state-auth');
     document.body.classList.add('state-app');
     actualizarAccountBarUI(user);
@@ -1040,7 +1100,6 @@ onAuthStateChanged(auth, async user => {
     currentUser = null;
     detachDataListeners();
     vaciarData();
-    await splashMinimo;
     document.body.classList.remove('state-loading', 'state-app');
     document.body.classList.add('state-auth');
     renderAll();
@@ -1078,6 +1137,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const btn = e.target.querySelector('button[type="submit"]');
     btn.disabled = true;
+    mostrarBienvenidaAlEntrar = true;
     try {
       const cred = await createUserWithEmailAndPassword(auth, correo, password);
       await updateProfile(cred.user, { displayName: nombre });
@@ -1086,6 +1146,7 @@ document.addEventListener('DOMContentLoaded', () => {
         fechaAlta: serverTimestamp(), fechaActualizacion: serverTimestamp()
       });
     } catch (err) {
+      mostrarBienvenidaAlEntrar = false;
       errorEl.textContent = mensajeErrorAuth(err.code);
     } finally {
       btn.disabled = false;
@@ -1101,9 +1162,11 @@ document.addEventListener('DOMContentLoaded', () => {
     errorEl.textContent = '';
     const btn = e.target.querySelector('button[type="submit"]');
     btn.disabled = true;
+    mostrarBienvenidaAlEntrar = true;
     try {
       await signInWithEmailAndPassword(auth, correo, password);
     } catch (err) {
+      mostrarBienvenidaAlEntrar = false;
       errorEl.textContent = mensajeErrorAuth(err.code);
     } finally {
       btn.disabled = false;
