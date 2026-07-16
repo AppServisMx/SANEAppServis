@@ -1020,19 +1020,27 @@ async function migrarDatosLocales(uid, local) {
 
 /* Reacciona a cualquier cambio de sesión: entrar, salir, o que Firebase confirme
    al cargar la página si ya había una sesión guardada en este dispositivo. */
+/* El logo de la pantalla de carga se "dibuja" de abajo hacia arriba durante
+   este tiempo; se espera a que termine antes de dejar entrar al usuario,
+   sin importar qué tan rápido responda Firebase. */
+const SPLASH_MINIMO_MS = 1900;
+const splashMinimo = new Promise(resolve => setTimeout(resolve, SPLASH_MINIMO_MS));
+
 onAuthStateChanged(auth, async user => {
   if (user) {
     currentUser = user;
+    await ensureUserDoc(user);
+    attachDataListeners(user.uid);
+    await splashMinimo;
     document.body.classList.remove('state-loading', 'state-auth');
     document.body.classList.add('state-app');
     actualizarAccountBarUI(user);
-    await ensureUserDoc(user);
-    attachDataListeners(user.uid);
     checkMigration(user.uid);
   } else {
     currentUser = null;
     detachDataListeners();
     vaciarData();
+    await splashMinimo;
     document.body.classList.remove('state-loading', 'state-app');
     document.body.classList.add('state-auth');
     renderAll();
