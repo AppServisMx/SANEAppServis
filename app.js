@@ -800,7 +800,6 @@ function actualizarPreviewCosteoDetallado() {
   const precioVenta = producto ? producto.precioVenta : 0;
   const utilidad = precioVenta - resultado.costoPorPieza;
   const porcentaje = precioVenta > 0 ? (utilidad / precioVenta) * 100 : 0;
-  const precioSugerido = resultado.costoPorPieza / 0.4;
 
   document.getElementById('costeo-detallado-preview').innerHTML = `
     <div class="detail-formula-row"><span>Costo total de la receta</span><span>${formatCurrency(resultado.costoTotalReceta)}</span></div>
@@ -808,7 +807,7 @@ function actualizarPreviewCosteoDetallado() {
     <div class="detail-formula-row"><span>Precio de venta actual</span><span>${formatCurrency(precioVenta)}</span></div>
     <div class="detail-formula-row detail-formula-row--result"><span>Utilidad por pieza</span><span>${formatCurrency(utilidad)}</span></div>
     <div class="detail-formula-row"><span>% de utilidad</span><span>${porcentaje.toFixed(0)}%</span></div>
-    <div class="detail-formula-row detail-formula-row--result detail-formula-row--final"><span>Precio sugerido</span><span>${formatCurrency(precioSugerido)}</span></div>
+    <div class="detail-formula-row detail-formula-row--pending"><span>Precio sugerido</span><span>Pendiente de definir</span></div>
   `;
 }
 

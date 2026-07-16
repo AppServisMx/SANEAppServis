@@ -97,6 +97,50 @@ svg {
   padding-bottom: 24px;
 }
 
+/* ---------- Interruptor Básico/Pro (solo para desarrollo): barra fija superior, visible en todo tamaño de pantalla ---------- */
+
+.app-topbar-global {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 16px;
+  background: var(--color-surface);
+  border-bottom: 1px dashed #D9CCF5;
+}
+
+.plan-dev-label {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.plan-dev-pills {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.plan-dev-btn {
+  border: none;
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 999px;
+}
+
+.plan-dev-btn.active {
+  background: var(--color-violet);
+  color: #fff;
+}
+
 /* ---------- Pantallas ---------- */
 
 .screen {
@@ -658,55 +702,12 @@ svg {
 }
 
 .sidebar-credit {
-  margin: 10px 0 16px;
+  margin: auto 0 16px;
   padding: 0 16px;
   font-size: 11px;
   color: var(--color-text-muted);
   text-align: center;
   opacity: 0.8;
-}
-
-/* ---------- Interruptor Básico/Pro (solo para desarrollo) ---------- */
-
-.plan-dev-toggle {
-  margin: auto 12px 0;
-  padding: 10px;
-  border-radius: var(--radius-sm);
-  background: var(--color-bg);
-  border: 1px dashed #D9CCF5;
-}
-
-.plan-dev-label {
-  display: block;
-  font-size: 10px;
-  color: var(--color-text-muted);
-  text-align: center;
-  margin-bottom: 6px;
-}
-
-.plan-dev-pills {
-  display: flex;
-  gap: 4px;
-}
-
-.plan-dev-btn {
-  flex: 1;
-  border: none;
-  background: var(--color-surface);
-  color: var(--color-text-muted);
-  font-size: 11px;
-  font-weight: 700;
-  padding: 6px 4px;
-  border-radius: 999px;
-}
-
-.plan-dev-btn.active {
-  background: var(--color-violet);
-  color: #fff;
-}
-
-.sidebar.collapsed .plan-dev-toggle {
-  display: none;
 }
 
 .sidebar-toggle {
@@ -1068,6 +1069,14 @@ svg {
   background: var(--color-mint-light);
   color: #065F46;
   font-size: 15px;
+}
+
+.detail-formula-row--pending {
+  background: none;
+  border: 1px dashed #D9CCF5;
+  color: var(--color-text-muted);
+  font-style: italic;
+  font-weight: 500;
 }
 
 .detail-explainer {
