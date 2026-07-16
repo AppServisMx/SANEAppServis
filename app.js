@@ -3,9 +3,11 @@
 
 const STORAGE_KEY = 'emprendedoresAppServis_v1';
 const SIDEBAR_STORAGE_KEY = 'emprendedoresAppServis_sidebar_collapsed';
+const PLAN_STORAGE_KEY = 'saneAppServis_plan_dev';
 
 let currentScreen = 'inicio';
 let currentPeriod = 'dia';
+let insumoRowCounter = 0;
 
 /* ============ Iconos (SVG en línea, sin emojis ni imágenes externas) ============ */
 
@@ -92,7 +94,17 @@ function getDefaultData() {
     { id: uid(), concepto: 'Anuncios en redes sociales', monto: 250, categoria: 'publicidad', fecha: offsetDateStr(12) }
   ];
 
-  return { productos, costeos, ventas, gastos };
+  // Insumos de ejemplo (función Pro): lo que se compra para hacer los productos.
+  const insumos = [
+    { id: uid(), nombre: 'Harina', categoria: 'masa', unidadCompra: 'kg', cantidadComprada: 1, precioPagado: 25, proveedor: 'Central de abastos' },
+    { id: uid(), nombre: 'Chocolate', categoria: 'masa', unidadCompra: 'kg', cantidadComprada: 1, precioPagado: 120, proveedor: '' },
+    { id: uid(), nombre: 'Leche', categoria: 'volumen', unidadCompra: 'lt', cantidadComprada: 1, precioPagado: 22, proveedor: '' },
+    { id: uid(), nombre: 'Huevo', categoria: 'pieza', unidadCompra: 'pza', cantidadComprada: 12, precioPagado: 42, proveedor: '' }
+  ];
+
+  const costeoDetallado = [];
+
+  return { productos, costeos, ventas, gastos, insumos, costeoDetallado };
 }
 
 /* ============ Persistencia ============ */
@@ -104,7 +116,11 @@ function loadData() {
     saveData(demo);
     return demo;
   }
-  return JSON.parse(raw);
+  const parsed = JSON.parse(raw);
+  // Compatibilidad con datos guardados antes de que existiera Mis Insumos / Costeo Detallado.
+  if (!parsed.insumos) parsed.insumos = [];
+  if (!parsed.costeoDetallado) parsed.costeoDetallado = [];
+  return parsed;
 }
 
 function saveData(d) {
@@ -121,6 +137,95 @@ function getCosteo(productoId) {
 
 function costoTotalUnitario(c) {
   return c.materiaPrima + c.empaque + c.manoObra + c.otrosCostos;
+}
+
+/* ---- Mis Insumos (función Pro) ---- */
+
+function getInsumo(id) {
+  return data.insumos.find(i => i.id === id) || null;
+}
+
+function categoriaDeUnidad(unidad) {
+  if (unidad === 'gr' || unidad === 'kg') return 'masa';
+  if (unidad === 'ml' || unidad === 'lt') return 'volumen';
+  return 'pieza';
+}
+
+function unidadBaseLabel(categoria) {
+  if (categoria === 'masa') return 'gramo';
+  if (categoria === 'volumen') return 'mililitro';
+  return 'pieza';
+}
+
+// Costo por la unidad más pequeña de su categoría (gramo, mililitro o pieza),
+// para poder usarse en cualquier receta sin importar en qué se haya comprado.
+function costoBaseInsumo(insumo) {
+  const cantidad = Number(insumo.cantidadComprada) || 0;
+  if (cantidad <= 0) return 0;
+  const costoPorUnidadCompra = insumo.precioPagado / cantidad;
+
+  if (insumo.categoria === 'masa') {
+    return insumo.unidadCompra === 'kg' ? costoPorUnidadCompra / 1000 : costoPorUnidadCompra;
+  }
+  if (insumo.categoria === 'volumen') {
+    return insumo.unidadCompra === 'lt' ? costoPorUnidadCompra / 1000 : costoPorUnidadCompra;
+  }
+  return costoPorUnidadCompra;
+}
+
+function resumenCostoInsumo(insumo) {
+  const base = costoBaseInsumo(insumo);
+  if (insumo.categoria === 'masa') {
+    return `${formatCurrency(base)} por gramo · ${formatCurrency(base * 1000)} por kilo`;
+  }
+  if (insumo.categoria === 'volumen') {
+    return `${formatCurrency(base)} por mililitro · ${formatCurrency(base * 1000)} por litro`;
+  }
+  return `${formatCurrency(base)} por pieza`;
+}
+
+/* ---- Costeo Detallado (función Pro) ---- */
+
+function getCosteoDetallado(productoId) {
+  return data.costeoDetallado.find(c => c.productoId === productoId) || null;
+}
+
+function calcularCosteoDetallado(cd) {
+  const costoInsumos = (cd.items || []).reduce((sum, item) => {
+    const insumo = getInsumo(item.insumoId);
+    if (!insumo) return sum;
+    return sum + costoBaseInsumo(insumo) * (Number(item.cantidad) || 0);
+  }, 0);
+  const costoTotalReceta = costoInsumos + (Number(cd.empaque) || 0) + (Number(cd.manoObra) || 0);
+  const rendimiento = Number(cd.rendimiento) > 0 ? Number(cd.rendimiento) : 1;
+  const costoPorPieza = costoTotalReceta / rendimiento;
+  return { costoInsumos, costoTotalReceta, rendimiento, costoPorPieza };
+}
+
+// Costo unitario de un producto, sin importar qué método de costeo use.
+// Reutiliza el cálculo rápido o el detallado según corresponda, no los duplica.
+function getCostoUnitarioProducto(productoId) {
+  const producto = data.productos.find(p => p.id === productoId);
+  if (producto && producto.usaCosteoDetallado) {
+    const cd = getCosteoDetallado(productoId);
+    return cd ? calcularCosteoDetallado(cd).costoPorPieza : 0;
+  }
+  const c = getCosteo(productoId);
+  return c ? costoTotalUnitario(c) : 0;
+}
+
+/* ---- Modo Básico / Pro (interruptor solo para desarrollo) ---- */
+
+function getPlanMode() {
+  return localStorage.getItem(PLAN_STORAGE_KEY) === 'pro' ? 'pro' : 'basico';
+}
+
+function isPro() {
+  return getPlanMode() === 'pro';
+}
+
+function setPlanMode(mode) {
+  localStorage.setItem(PLAN_STORAGE_KEY, mode);
 }
 
 function isInPeriod(fechaStr, periodo) {
@@ -300,6 +405,7 @@ function goToScreen(screen) {
 function renderCurrentScreen() {
   if (currentScreen === 'inicio') renderInicio();
   if (currentScreen === 'productos') renderProductos();
+  if (currentScreen === 'insumos') renderInsumos();
   if (currentScreen === 'costeo') renderCosteo();
   if (currentScreen === 'ventas') renderVentas();
   if (currentScreen === 'gastos') renderGastos();
@@ -309,6 +415,7 @@ function renderCurrentScreen() {
 function renderAll() {
   renderInicio();
   renderProductos();
+  renderInsumos();
   renderCosteo();
   renderVentas();
   renderGastos();
@@ -355,6 +462,44 @@ function renderProductos() {
   `).join('');
 }
 
+/* ============ Render: Mis Insumos (función Pro) ============ */
+
+function renderInsumos() {
+  const bloqueado = document.getElementById('insumos-bloqueado');
+  const contenido = document.getElementById('insumos-contenido');
+
+  if (!isPro()) {
+    bloqueado.style.display = 'flex';
+    contenido.style.display = 'none';
+    return;
+  }
+  bloqueado.style.display = 'none';
+  contenido.style.display = 'block';
+
+  const lista = document.getElementById('lista-insumos');
+  const vacio = document.getElementById('insumos-vacio');
+
+  if (data.insumos.length === 0) {
+    lista.innerHTML = '';
+    vacio.style.display = 'block';
+    return;
+  }
+  vacio.style.display = 'none';
+
+  lista.innerHTML = data.insumos.map(i => `
+    <li class="item-card">
+      <div class="item-info">
+        <span class="item-title">${escapeHtml(i.nombre)}</span>
+        <span class="item-subtitle">${resumenCostoInsumo(i)}${i.proveedor ? ' · ' + escapeHtml(i.proveedor) : ''}</span>
+      </div>
+      <div class="item-actions">
+        <button type="button" class="icon-btn" data-action="editar-insumo" data-id="${i.id}" aria-label="Editar">${ICON_PENCIL}</button>
+        <button type="button" class="icon-btn" data-action="eliminar-insumo" data-id="${i.id}" aria-label="Eliminar">${ICON_TRASH}</button>
+      </div>
+    </li>
+  `).join('');
+}
+
 /* ============ Render: Costeo ============ */
 
 function renderCosteo() {
@@ -369,13 +514,26 @@ function renderCosteo() {
   vacio.style.display = 'none';
 
   lista.innerHTML = data.productos.map(p => {
-    const c = getCosteo(p.id);
-    const subtitle = c ? `Te cuesta hacerlo: ${formatCurrency(costoTotalUnitario(c))}` : 'Aún no sabes cuánto te cuesta';
+    const usaDetallado = !!p.usaCosteoDetallado;
+    let subtitle;
+    if (usaDetallado) {
+      const cd = getCosteoDetallado(p.id);
+      subtitle = cd ? `Te cuesta hacerlo: ${formatCurrency(calcularCosteoDetallado(cd).costoPorPieza)} por pieza` : 'Aún no sabes cuánto te cuesta';
+    } else {
+      const c = getCosteo(p.id);
+      subtitle = c ? `Te cuesta hacerlo: ${formatCurrency(costoTotalUnitario(c))}` : 'Aún no sabes cuánto te cuesta';
+    }
+    const modoLabel = usaDetallado ? 'Detallado' : 'Rápido';
+    const cambiarALabel = usaDetallado ? 'Usar Costeo Rápido' : 'Usar Costeo Detallado';
     return `
       <li class="item-card">
         <div class="item-info">
           <span class="item-title">${escapeHtml(p.nombre)}</span>
           <span class="item-subtitle">${subtitle}</span>
+          <div class="costeo-mode-line">
+            <span class="costeo-mode-badge">${modoLabel}</span>
+            <button type="button" class="costeo-mode-link" data-action="cambiar-modo-costeo" data-id="${p.id}">${cambiarALabel}</button>
+          </div>
         </div>
         <div class="item-actions">
           <button type="button" class="icon-btn" data-action="editar-costeo" data-id="${p.id}" aria-label="Editar costeo">${ICON_PENCIL}</button>
@@ -516,6 +674,181 @@ function actualizarPreviewCosteo() {
   document.getElementById('costeo-total-preview').textContent = formatCurrency(mp + emp + mo + ot);
 }
 
+/* ---- Edición de costeo: decide entre Rápido o Detallado según el producto ---- */
+
+function openEditCosteoForProduct(productoId) {
+  const producto = data.productos.find(p => p.id === productoId);
+  if (producto && producto.usaCosteoDetallado) {
+    openCosteoDetalladoModal(productoId);
+  } else {
+    openCosteoModal(productoId);
+  }
+}
+
+function cambiarModoCosteo(productoId) {
+  const producto = data.productos.find(p => p.id === productoId);
+  if (!producto) return;
+
+  if (!producto.usaCosteoDetallado) {
+    if (!isPro()) {
+      goToScreen('sane-pro');
+      return;
+    }
+    producto.usaCosteoDetallado = true;
+    saveData(data);
+    renderCosteo();
+    openCosteoDetalladoModal(productoId);
+  } else {
+    producto.usaCosteoDetallado = false;
+    saveData(data);
+    renderCosteo();
+    openCosteoModal(productoId);
+  }
+}
+
+/* ---- Costeo Detallado (función Pro) ---- */
+
+function openCosteoDetalladoModal(productoId) {
+  const producto = data.productos.find(p => p.id === productoId);
+  if (!producto) return;
+
+  document.getElementById('costeo-detallado-producto-id').value = productoId;
+  document.getElementById('costeo-detallado-producto-nombre').textContent = producto.nombre;
+
+  const cd = getCosteoDetallado(productoId);
+  document.getElementById('costeo-detallado-empaque').value = cd ? cd.empaque : '';
+  document.getElementById('costeo-detallado-mano-obra').value = cd ? cd.manoObra : '';
+  document.getElementById('costeo-detallado-rendimiento').value = cd ? cd.rendimiento : '';
+
+  const filasContenedor = document.getElementById('costeo-detallado-insumos');
+  filasContenedor.innerHTML = '';
+
+  const sinInsumosMsg = document.getElementById('costeo-detallado-sin-insumos');
+  const addBtn = document.getElementById('btn-add-insumo-row');
+  if (data.insumos.length === 0) {
+    sinInsumosMsg.style.display = 'block';
+    addBtn.style.display = 'none';
+  } else {
+    sinInsumosMsg.style.display = 'none';
+    addBtn.style.display = 'block';
+  }
+
+  if (cd && cd.items && cd.items.length > 0) {
+    cd.items.forEach(item => agregarFilaInsumo(item.insumoId, item.cantidad));
+  } else if (data.insumos.length > 0) {
+    agregarFilaInsumo();
+  }
+
+  actualizarPreviewCosteoDetallado();
+  openModal('costeo-detallado');
+}
+
+function agregarFilaInsumo(insumoIdSeleccionado = null, cantidad = '') {
+  insumoRowCounter += 1;
+  const contenedor = document.getElementById('costeo-detallado-insumos');
+
+  const div = document.createElement('div');
+  div.className = 'insumo-row';
+  div.dataset.rowId = `insumo-row-${insumoRowCounter}`;
+
+  const opciones = data.insumos.map(i => `<option value="${i.id}">${escapeHtml(i.nombre)}</option>`).join('');
+  const primerInsumo = insumoIdSeleccionado || (data.insumos[0] && data.insumos[0].id) || '';
+  const insumoActivo = getInsumo(primerInsumo);
+  const unidadLabel = insumoActivo ? unidadBaseLabel(insumoActivo.categoria) : '';
+
+  div.innerHTML = `
+    <select class="insumo-row-select">${opciones}</select>
+    <input type="number" class="insumo-row-cantidad" min="0" step="0.01" placeholder="0" value="${cantidad}">
+    <span class="insumo-row-unidad">${unidadLabel}</span>
+    <button type="button" class="insumo-row-remove" aria-label="Quitar insumo">${ICON_TRASH}</button>
+  `;
+
+  contenedor.appendChild(div);
+
+  const select = div.querySelector('.insumo-row-select');
+  select.value = primerInsumo;
+
+  select.addEventListener('change', () => {
+    const insumo = getInsumo(select.value);
+    div.querySelector('.insumo-row-unidad').textContent = insumo ? unidadBaseLabel(insumo.categoria) : '';
+    actualizarPreviewCosteoDetallado();
+  });
+  div.querySelector('.insumo-row-cantidad').addEventListener('input', actualizarPreviewCosteoDetallado);
+  div.querySelector('.insumo-row-remove').addEventListener('click', () => {
+    div.remove();
+    actualizarPreviewCosteoDetallado();
+  });
+}
+
+function leerFilasInsumo() {
+  return Array.from(document.querySelectorAll('#costeo-detallado-insumos .insumo-row')).map(row => ({
+    insumoId: row.querySelector('.insumo-row-select').value,
+    cantidad: parseFloat(row.querySelector('.insumo-row-cantidad').value) || 0
+  })).filter(item => item.insumoId);
+}
+
+function actualizarPreviewCosteoDetallado() {
+  const items = leerFilasInsumo();
+  const empaque = parseFloat(document.getElementById('costeo-detallado-empaque').value) || 0;
+  const manoObra = parseFloat(document.getElementById('costeo-detallado-mano-obra').value) || 0;
+  const rendimiento = parseFloat(document.getElementById('costeo-detallado-rendimiento').value) || 0;
+
+  const resultado = calcularCosteoDetallado({ items, empaque, manoObra, rendimiento });
+
+  const productoId = document.getElementById('costeo-detallado-producto-id').value;
+  const producto = data.productos.find(p => p.id === productoId);
+  const precioVenta = producto ? producto.precioVenta : 0;
+  const utilidad = precioVenta - resultado.costoPorPieza;
+  const porcentaje = precioVenta > 0 ? (utilidad / precioVenta) * 100 : 0;
+  const precioSugerido = resultado.costoPorPieza / 0.4;
+
+  document.getElementById('costeo-detallado-preview').innerHTML = `
+    <div class="detail-formula-row"><span>Costo total de la receta</span><span>${formatCurrency(resultado.costoTotalReceta)}</span></div>
+    <div class="detail-formula-row detail-formula-row--result"><span>Costo por pieza</span><span>${formatCurrency(resultado.costoPorPieza)}</span></div>
+    <div class="detail-formula-row"><span>Precio de venta actual</span><span>${formatCurrency(precioVenta)}</span></div>
+    <div class="detail-formula-row detail-formula-row--result"><span>Utilidad por pieza</span><span>${formatCurrency(utilidad)}</span></div>
+    <div class="detail-formula-row"><span>% de utilidad</span><span>${porcentaje.toFixed(0)}%</span></div>
+    <div class="detail-formula-row detail-formula-row--result detail-formula-row--final"><span>Precio sugerido</span><span>${formatCurrency(precioSugerido)}</span></div>
+  `;
+}
+
+/* ---- Mis Insumos: modal agregar/editar ---- */
+
+function openInsumoModal(id = null) {
+  const form = document.getElementById('form-insumo');
+  form.reset();
+  document.getElementById('insumo-id').value = '';
+  document.getElementById('insumo-unidad').value = 'gr';
+
+  if (id) {
+    const i = getInsumo(id);
+    if (i) {
+      document.getElementById('insumo-id').value = i.id;
+      document.getElementById('insumo-nombre').value = i.nombre;
+      document.getElementById('insumo-unidad').value = i.unidadCompra;
+      document.getElementById('insumo-cantidad').value = i.cantidadComprada;
+      document.getElementById('insumo-precio').value = i.precioPagado;
+      document.getElementById('insumo-proveedor').value = i.proveedor || '';
+    }
+  }
+  actualizarPreviewInsumo();
+  openModal('insumo');
+}
+
+function actualizarPreviewInsumo() {
+  const unidad = document.getElementById('insumo-unidad').value;
+  const categoria = categoriaDeUnidad(unidad);
+  const cantidad = parseFloat(document.getElementById('insumo-cantidad').value) || 0;
+  const precio = parseFloat(document.getElementById('insumo-precio').value) || 0;
+  const preview = document.getElementById('insumo-costo-preview');
+
+  if (cantidad <= 0) {
+    preview.textContent = 'Costo por unidad: $0.00';
+    return;
+  }
+  preview.textContent = resumenCostoInsumo({ categoria, unidadCompra: unidad, cantidadComprada: cantidad, precioPagado: precio });
+}
+
 function openVentaModal() {
   if (data.productos.length === 0) {
     alert('Primero agrega al menos un producto en la pestaña Productos.');
@@ -537,13 +870,15 @@ function actualizarPreviewVenta() {
   document.getElementById('venta-ingreso-preview').textContent = formatCurrency(ingreso);
 
   const hint = document.getElementById('venta-costo-hint');
-  const costeo = producto ? getCosteo(producto.id) : null;
-  if (producto && !costeo) {
-    hint.textContent = 'Aún no sabes cuánto te cuesta este producto. Por ahora se usará $0.00.';
-  } else if (producto && costeo) {
-    hint.textContent = `Te cuesta hacerlo: ${formatCurrency(costoTotalUnitario(costeo))}`;
-  } else {
+  if (!producto) {
     hint.textContent = '';
+    return;
+  }
+  const tieneCosteo = producto.usaCosteoDetallado ? !!getCosteoDetallado(producto.id) : !!getCosteo(producto.id);
+  if (!tieneCosteo) {
+    hint.textContent = 'Aún no sabes cuánto te cuesta este producto. Por ahora se usará $0.00.';
+  } else {
+    hint.textContent = `Te cuesta hacerlo: ${formatCurrency(getCostoUnitarioProducto(producto.id))}`;
   }
 }
 
@@ -560,8 +895,20 @@ function eliminarProducto(id) {
   if (!confirm('¿Seguro que quieres borrar este producto? No podrás recuperarlo.')) return;
   data.productos = data.productos.filter(p => p.id !== id);
   data.costeos = data.costeos.filter(c => c.productoId !== id);
+  data.costeoDetallado = data.costeoDetallado.filter(c => c.productoId !== id);
   saveData(data);
   renderProductos();
+  renderCosteo();
+}
+
+function eliminarInsumo(id) {
+  if (!confirm('¿Seguro que quieres borrar este insumo? No podrás recuperarlo.')) return;
+  data.insumos = data.insumos.filter(i => i.id !== id);
+  data.costeoDetallado.forEach(cd => {
+    cd.items = cd.items.filter(item => item.insumoId !== id);
+  });
+  saveData(data);
+  renderInsumos();
   renderCosteo();
 }
 
@@ -734,9 +1081,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const { action, id } = btn.dataset;
     if (action === 'editar-producto') openProductoModal(id);
     if (action === 'eliminar-producto') eliminarProducto(id);
-    if (action === 'editar-costeo') openCosteoModal(id);
+    if (action === 'editar-costeo') openEditCosteoForProduct(id);
+    if (action === 'cambiar-modo-costeo') cambiarModoCosteo(id);
     if (action === 'eliminar-venta') eliminarVenta(id);
     if (action === 'eliminar-gasto') eliminarGasto(id);
+    if (action === 'editar-insumo') openInsumoModal(id);
+    if (action === 'eliminar-insumo') eliminarInsumo(id);
   });
 
   /* Formulario: Producto */
@@ -800,8 +1150,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const producto = data.productos.find(p => p.id === productoId);
     if (!producto || !cantidad || cantidad < 1 || !fecha) return;
 
-    const costeo = getCosteo(productoId);
-    const costoUnitario = costeo ? costoTotalUnitario(costeo) : 0;
+    const costoUnitario = getCostoUnitarioProducto(productoId);
 
     data.ventas.push({
       id: uid(),
@@ -834,10 +1183,98 @@ document.addEventListener('DOMContentLoaded', () => {
     renderInicio();
   });
 
+  /* Formulario: Mis Insumos */
+  document.getElementById('btn-add-insumo').addEventListener('click', () => openInsumoModal());
+  ['insumo-unidad', 'insumo-cantidad', 'insumo-precio'].forEach(id => {
+    document.getElementById(id).addEventListener('input', actualizarPreviewInsumo);
+    document.getElementById(id).addEventListener('change', actualizarPreviewInsumo);
+  });
+  document.getElementById('form-insumo').addEventListener('submit', e => {
+    e.preventDefault();
+    const id = document.getElementById('insumo-id').value;
+    const nombre = document.getElementById('insumo-nombre').value.trim();
+    const unidadCompra = document.getElementById('insumo-unidad').value;
+    const categoria = categoriaDeUnidad(unidadCompra);
+    const cantidadComprada = parseFloat(document.getElementById('insumo-cantidad').value);
+    const precioPagado = parseFloat(document.getElementById('insumo-precio').value);
+    const proveedor = document.getElementById('insumo-proveedor').value.trim();
+
+    if (!nombre || isNaN(cantidadComprada) || cantidadComprada <= 0 || isNaN(precioPagado) || precioPagado < 0) return;
+
+    if (id) {
+      const i = getInsumo(id);
+      i.nombre = nombre;
+      i.unidadCompra = unidadCompra;
+      i.categoria = categoria;
+      i.cantidadComprada = cantidadComprada;
+      i.precioPagado = precioPagado;
+      i.proveedor = proveedor;
+    } else {
+      data.insumos.push({ id: uid(), nombre, unidadCompra, categoria, cantidadComprada, precioPagado, proveedor });
+    }
+    saveData(data);
+    closeModal();
+    renderInsumos();
+  });
+
+  /* Formulario: Costeo Detallado */
+  document.getElementById('btn-add-insumo-row').addEventListener('click', () => {
+    agregarFilaInsumo();
+    actualizarPreviewCosteoDetallado();
+  });
+  ['costeo-detallado-empaque', 'costeo-detallado-mano-obra', 'costeo-detallado-rendimiento'].forEach(id => {
+    document.getElementById(id).addEventListener('input', actualizarPreviewCosteoDetallado);
+  });
+  document.getElementById('form-costeo-detallado').addEventListener('submit', e => {
+    e.preventDefault();
+    const productoId = document.getElementById('costeo-detallado-producto-id').value;
+    const items = leerFilasInsumo();
+    const empaque = parseFloat(document.getElementById('costeo-detallado-empaque').value) || 0;
+    const manoObra = parseFloat(document.getElementById('costeo-detallado-mano-obra').value) || 0;
+    const rendimiento = parseFloat(document.getElementById('costeo-detallado-rendimiento').value) || 0;
+
+    const existente = getCosteoDetallado(productoId);
+    if (existente) {
+      existente.items = items;
+      existente.empaque = empaque;
+      existente.manoObra = manoObra;
+      existente.rendimiento = rendimiento;
+    } else {
+      data.costeoDetallado.push({ productoId, items, empaque, manoObra, rendimiento });
+    }
+    saveData(data);
+    closeModal();
+    renderCosteo();
+  });
+
+  /* Interruptor Básico/Pro (solo para desarrollo) */
+  function actualizarPlanDevToggleUI() {
+    const modo = getPlanMode();
+    document.querySelectorAll('.plan-dev-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.plan === modo);
+    });
+  }
+  document.querySelectorAll('.plan-dev-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      setPlanMode(btn.dataset.plan);
+      actualizarPlanDevToggleUI();
+      renderCurrentScreen();
+    });
+  });
+  actualizarPlanDevToggleUI();
+
+  /* Botones hacia la pantalla SANE Pro y de regreso a Inicio */
+  document.querySelectorAll('[data-goto-sane-pro]').forEach(btn => {
+    btn.addEventListener('click', () => goToScreen('sane-pro'));
+  });
+  document.querySelectorAll('[data-goto-inicio]').forEach(btn => {
+    btn.addEventListener('click', () => goToScreen('inicio'));
+  });
+
   /* Borrar datos de demostración */
   document.getElementById('btn-reset-demo').addEventListener('click', () => {
     if (!confirm('¿Seguro que quieres borrar estos datos de ejemplo y empezar desde cero? No podrás recuperarlos.')) return;
-    data = { productos: [], costeos: [], ventas: [], gastos: [] };
+    data = { productos: [], costeos: [], ventas: [], gastos: [], insumos: [], costeoDetallado: [] };
     saveData(data);
     renderAll();
   });

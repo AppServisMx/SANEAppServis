@@ -658,12 +658,55 @@ svg {
 }
 
 .sidebar-credit {
-  margin: auto 0 16px;
+  margin: 10px 0 16px;
   padding: 0 16px;
   font-size: 11px;
   color: var(--color-text-muted);
   text-align: center;
   opacity: 0.8;
+}
+
+/* ---------- Interruptor Básico/Pro (solo para desarrollo) ---------- */
+
+.plan-dev-toggle {
+  margin: auto 12px 0;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  border: 1px dashed #D9CCF5;
+}
+
+.plan-dev-label {
+  display: block;
+  font-size: 10px;
+  color: var(--color-text-muted);
+  text-align: center;
+  margin-bottom: 6px;
+}
+
+.plan-dev-pills {
+  display: flex;
+  gap: 4px;
+}
+
+.plan-dev-btn {
+  flex: 1;
+  border: none;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 4px;
+  border-radius: 999px;
+}
+
+.plan-dev-btn.active {
+  background: var(--color-violet);
+  color: #fff;
+}
+
+.sidebar.collapsed .plan-dev-toggle {
+  display: none;
 }
 
 .sidebar-toggle {
@@ -1035,6 +1078,230 @@ svg {
   background: var(--color-yellow-light);
   padding: 12px 14px;
   border-radius: var(--radius-sm);
+}
+
+/* ---------- Bloqueo de funciones Pro (mensaje elegante) ---------- */
+
+.upsell-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+  background: var(--color-violet-light);
+  border-radius: var(--radius-lg);
+  padding: 32px 24px;
+  margin-top: 8px;
+}
+
+.upsell-icon {
+  width: 40px;
+  height: 40px;
+  color: var(--color-violet);
+}
+
+.upsell-block h3 {
+  font-size: 17px;
+}
+
+.upsell-block p {
+  font-size: 14px;
+  color: var(--color-text-muted);
+  max-width: 360px;
+}
+
+.upsell-btn {
+  width: auto;
+  padding: 12px 26px;
+  margin-top: 6px;
+}
+
+/* ---------- Enlace para cambiar el método de costeo (Rápido / Detallado) ---------- */
+
+.costeo-mode-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.costeo-mode-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-violet-dark);
+  background: var(--color-violet-light);
+  padding: 3px 9px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.costeo-mode-link {
+  border: none;
+  background: none;
+  color: var(--color-violet);
+  font-size: 12.5px;
+  font-weight: 700;
+  text-decoration: underline;
+  padding: 4px 0;
+  min-width: 0;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+/* ---------- Filas dinámicas de insumos dentro del Costeo Detallado ---------- */
+
+.insumo-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.insumo-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+}
+
+.insumo-row-select {
+  flex: 1;
+  min-width: 0;
+  font-family: inherit;
+  font-size: 13.5px;
+  padding: 9px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid #E4DBF7;
+  background: var(--color-surface);
+}
+
+.insumo-row-cantidad {
+  width: 70px;
+  flex-shrink: 0;
+  font-family: inherit;
+  font-size: 13.5px;
+  padding: 9px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid #E4DBF7;
+  background: var(--color-surface);
+}
+
+.insumo-row-unidad {
+  font-size: 11.5px;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+  min-width: 34px;
+}
+
+.insumo-row-remove {
+  border: none;
+  background: var(--color-pink-light);
+  color: #9D174D;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.insumo-row-remove svg {
+  width: 14px;
+  height: 14px;
+}
+
+.add-insumo-row-btn {
+  border: 1px dashed #C9B6F2;
+  background: none;
+  color: var(--color-violet-dark);
+  font-weight: 700;
+  font-size: 13.5px;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  margin-top: -4px;
+}
+
+/* ---------- Pantalla comercial SANE Pro ---------- */
+
+.sane-pro-back {
+  margin-top: 0;
+  text-align: left;
+  text-decoration: none;
+  font-weight: 700;
+  color: var(--color-violet-dark);
+}
+
+.sane-pro-hero {
+  text-align: center;
+  background: linear-gradient(135deg, var(--color-violet), var(--color-pink));
+  border-radius: var(--radius-lg);
+  padding: 32px 20px;
+  color: #fff;
+  margin-top: 16px;
+}
+
+.sane-pro-hero-icon {
+  width: 40px;
+  height: 40px;
+  margin: 0 auto 10px;
+}
+
+.sane-pro-hero h2 {
+  color: #fff;
+  font-size: 22px;
+}
+
+.sane-pro-hero p {
+  margin-top: 6px;
+  font-size: 14px;
+  opacity: 0.92;
+}
+
+.sane-pro-features {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.sane-pro-feature {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  box-shadow: var(--shadow-card);
+}
+
+.sane-pro-feature-icon {
+  width: 24px;
+  height: 24px;
+  color: var(--color-violet);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.sane-pro-feature h3 {
+  font-size: 15px;
+}
+
+.sane-pro-feature p {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.sane-pro-note {
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--color-text-muted);
+  margin-top: 20px;
 }
 
 /* ---------- Desde tablet (768px) en adelante: tarjeta de Inicio y acciones rápidas
