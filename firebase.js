@@ -27,7 +27,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDjFKIWQPKbfuInAZPhtozgU7UvHtnjsGY",
+  apiKey: "AIzaSyDjFKIWQPKbfuInAZPhtoZgU7UvHtnjsGY",
   authDomain: "saneappservis.firebaseapp.com",
   projectId: "saneappservis",
   storageBucket: "saneappservis.firebasestorage.app",
