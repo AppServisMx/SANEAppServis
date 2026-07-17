@@ -1268,13 +1268,12 @@ body.state-auth .auth-gate {
 }
 
 .sidebar.plan-basico .sidebar-link--pro {
-  background: var(--color-violet);
+  background: linear-gradient(135deg, var(--color-violet), #B089F4);
   color: #fff;
 }
 
 .sidebar.plan-basico .sidebar-link--pro.active {
-  background: var(--color-violet-light);
-  color: var(--color-violet-dark);
+  color: var(--color-violet-light);
 }
 
 .sidebar-icon {
