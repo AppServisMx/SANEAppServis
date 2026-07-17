@@ -14,8 +14,12 @@ import {
 const STORAGE_KEY = 'emprendedoresAppServis_v1'; // datos locales de versiones anteriores (para migración)
 const SIDEBAR_STORAGE_KEY = 'emprendedoresAppServis_sidebar_collapsed';
 
-// Límites de ejemplo del plan Básico (ajustables; no son precios, son topes de uso).
-const LIMITES_BASICO = { productos: 15, ventasPorMes: 50 };
+// Límites del plan Básico: TODAVÍA NO APROBADOS. Se dejan en "null" (pendiente
+// de definir) a propósito; mientras sigan así, no se bloquea a nadie por
+// cantidad. Cuando se confirmen los números reales, solo hay que poner el
+// valor numérico aquí.
+const BASIC_PRODUCT_LIMIT = null; // pendiente de definir
+const BASIC_MONTHLY_SALES_LIMIT = null; // pendiente de definir
 
 let currentScreen = 'inicio';
 let currentPeriod = 'dia';
@@ -248,17 +252,29 @@ function getEstadoPlan() {
   return (data.usuario && data.usuario.estadoPlan) || 'activo';
 }
 
-// Un plan Pro suspendido o cancelado pierde los beneficios Pro hasta reactivarse.
-function isPro() {
-  return getPlanMode() === 'pro' && getEstadoPlan() === 'activo';
+/* ---- Interruptor Básico/Pro de desarrollo (solo para pruebas) ----
+   Vive únicamente en localStorage de este dispositivo; NUNCA toca el plan
+   real guardado en Firestore. Sirve para probar las funciones Pro sin
+   depender de una cuenta real en Pro. */
+const PLAN_DEV_STORAGE_KEY = 'saneAppServis_plan_dev';
+
+function getDevPlanOverride() {
+  const v = localStorage.getItem(PLAN_DEV_STORAGE_KEY);
+  return (v === 'pro' || v === 'basico') ? v : null;
 }
 
-async function cambiarPlanPropio(nuevoPlan) {
-  await setDoc(usuarioRef(currentUser.uid), {
-    plan: nuevoPlan,
-    estadoPlan: 'activo',
-    fechaActualizacionPlan: serverTimestamp()
-  }, { merge: true });
+function setDevPlanOverride(valor) {
+  localStorage.setItem(PLAN_DEV_STORAGE_KEY, valor);
+}
+
+// Si el interruptor de desarrollo está activo, manda sobre el plan real
+// (solo en este dispositivo, solo para pruebas). Si no, se usa el plan real
+// guardado en Firestore. Un plan Pro suspendido o cancelado pierde los
+// beneficios Pro hasta reactivarse.
+function isPro() {
+  const override = getDevPlanOverride();
+  if (override) return override === 'pro';
+  return getPlanMode() === 'pro' && getEstadoPlan() === 'activo';
 }
 
 /* ---- Límites del plan Básico ---- */
@@ -278,10 +294,12 @@ function mostrarLimitePlan(mensaje) {
 
 // Antes de crear un producto o venta nuevos, confirma que el plan Básico no haya
 // llegado a su tope; si ya llegó, muestra el aviso elegante y detiene la acción.
+// Mientras los límites sigan "pendientes de definir" (null), nunca bloquea.
 function puedeAgregarProducto() {
   if (isPro()) return true;
-  if (data.productos.length >= LIMITES_BASICO.productos) {
-    mostrarLimitePlan(`Con el plan Básico puedes tener hasta ${LIMITES_BASICO.productos} productos.`);
+  if (BASIC_PRODUCT_LIMIT === null) return true;
+  if (data.productos.length >= BASIC_PRODUCT_LIMIT) {
+    mostrarLimitePlan(`Con el plan Básico puedes tener hasta ${BASIC_PRODUCT_LIMIT} productos.`);
     return false;
   }
   return true;
@@ -289,8 +307,9 @@ function puedeAgregarProducto() {
 
 function puedeAgregarVenta() {
   if (isPro()) return true;
-  if (ventasDelMesActual() >= LIMITES_BASICO.ventasPorMes) {
-    mostrarLimitePlan(`Con el plan Básico puedes anotar hasta ${LIMITES_BASICO.ventasPorMes} ventas por mes.`);
+  if (BASIC_MONTHLY_SALES_LIMIT === null) return true;
+  if (ventasDelMesActual() >= BASIC_MONTHLY_SALES_LIMIT) {
+    mostrarLimitePlan(`Con el plan Básico puedes anotar hasta ${BASIC_MONTHLY_SALES_LIMIT} ventas por mes.`);
     return false;
   }
   return true;
@@ -1665,9 +1684,11 @@ document.addEventListener('DOMContentLoaded', () => {
     renderCosteo();
   });
 
-  /* Mi Plan: activar SANE Pro (sin cobro, solo cambia el plan en Firestore) */
-  document.getElementById('btn-activar-pro').addEventListener('click', async () => {
-    await cambiarPlanPropio('pro');
+  /* Mi Plan: un usuario normal solo puede conocer SANE Pro (pantalla comercial),
+     nunca activarse Pro él mismo. El único cambio de plan real hasta ahora es
+     manual, vía el panel administrativo (sin permisos reales todavía). */
+  document.getElementById('btn-activar-pro').addEventListener('click', () => {
+    goToScreen('sane-pro');
   });
 
   /* Aviso elegante de límite de plan alcanzado */
@@ -1678,6 +1699,23 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('limite-plan-overlay').classList.remove('open');
     goToScreen('sane-pro');
   });
+
+  /* Interruptor Básico/Pro de desarrollo: solo para pruebas, separado del
+     plan real guardado en Firestore (no escribe nada en la nube). */
+  function actualizarPlanDevToggleUI() {
+    const override = getDevPlanOverride();
+    document.querySelectorAll('.plan-dev-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.plan === override);
+    });
+  }
+  document.querySelectorAll('.plan-dev-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      setDevPlanOverride(btn.dataset.plan);
+      actualizarPlanDevToggleUI();
+      renderCurrentScreen();
+    });
+  });
+  actualizarPlanDevToggleUI();
 
   /* Panel administrativo (estructura preliminar, sin permisos reales todavía):
      por ahora las reglas de Firestore solo permiten leer/escribir la propia

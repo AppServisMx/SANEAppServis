@@ -199,6 +199,14 @@
         <button type="button" class="account-bar-link" data-goto="mi-plan">Mi plan</button>
         <button type="button" id="btn-logout" class="account-bar-logout">Cerrar sesión</button>
       </div>
+      <div class="plan-dev-toggle-inline">
+        <span class="plan-dev-label">Modo (solo desarrollo)</span>
+        <div class="plan-dev-pills">
+          <button type="button" class="plan-dev-btn" data-plan="basico">Básico</button>
+          <button type="button" class="plan-dev-btn" data-plan="pro">Pro</button>
+        </div>
+        <button type="button" class="link-btn admin-plan-dev-link" data-goto="admin-plan">Panel admin</button>
+      </div>
     </div>
     <div class="app-shell">
 
@@ -428,15 +436,15 @@
             <span class="mi-plan-estado" id="mi-plan-estado">Activo</span>
           </div>
           <p class="mi-plan-siguiente" id="mi-plan-siguiente-paso"></p>
-          <button type="button" id="btn-activar-pro" class="btn-primary mi-plan-activar">Activar SANE Pro</button>
+          <button type="button" id="btn-activar-pro" class="btn-primary mi-plan-activar">Conocer SANE Pro</button>
         </div>
 
         <div class="mi-plan-beneficios">
           <div class="mi-plan-columna">
             <h3>Básico</h3>
             <ul>
-              <li>Hasta 15 productos</li>
-              <li>Hasta 50 ventas por mes</li>
+              <li>Cantidad de productos limitada</li>
+              <li>Cantidad de ventas mensuales limitada</li>
               <li>Costeo rápido</li>
               <li>Un negocio</li>
             </ul>
@@ -455,7 +463,6 @@
           </div>
         </div>
 
-        <button type="button" class="link-btn" data-goto="admin-plan">Panel administrativo (solo desarrollo)</button>
         <button type="button" class="link-btn sane-pro-back" data-goto-inicio>‹ Volver a Inicio</button>
       </section>
 

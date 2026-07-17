@@ -109,13 +109,55 @@ body.state-app .layout {
   z-index: 15;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   flex-wrap: wrap;
   gap: 8px;
   min-width: 0;
   padding: 8px 16px;
   background: var(--color-surface);
-  border-bottom: 1px solid #EEE6FB;
+  border-bottom: 1px dashed #D9CCF5;
+}
+
+/* ---------- Interruptor Básico/Pro y acceso al panel: solo para desarrollo, no es parte del flujo de un usuario normal ---------- */
+
+.plan-dev-toggle-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.plan-dev-label {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.plan-dev-pills {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.plan-dev-btn {
+  border: none;
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 999px;
+}
+
+.plan-dev-btn.active {
+  background: var(--color-violet);
+  color: #fff;
+}
+
+.admin-plan-dev-link {
+  font-size: 11px;
+  white-space: nowrap;
 }
 
 /* ---------- Barra de cuenta (nombre + Mi plan + cerrar sesión) ---------- */
