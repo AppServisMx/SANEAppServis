@@ -33,6 +33,7 @@ const ICON_PENCIL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" 
 
 const ICON_TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16"/><path d="M9 7V4.8c0-.4.4-.8.9-.8h4.2c.5 0 .9.4.9.8V7"/><path d="M6.5 7l.7 12.2c0 .95.8 1.8 1.8 1.8h6c1 0 1.8-.85 1.8-1.8L17.5 7"/><path d="M10 11v6M14 11v6"/></svg>';
 const ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg>';
+const ICON_PLUS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
 
 /* ============ Utilidades generales ============ */
 
@@ -90,15 +91,15 @@ function offsetDateStr(daysAgo) {
 
 /* ============ Datos (en memoria, sincronizados con Firestore) ============ */
 
-let data = { productos: [], costeos: [], ventas: [], gastos: [], insumos: [], costeoDetallado: [], proveedores: [], clientes: [], pedidos: [], usuario: null };
+let data = { productos: [], costeos: [], ventas: [], gastos: [], insumos: [], costeoDetallado: [], proveedores: [], clientes: [], pedidos: [], materiales: [], usuario: null };
 
 function vaciarData() {
-  data = { productos: [], costeos: [], ventas: [], gastos: [], insumos: [], costeoDetallado: [], proveedores: [], clientes: [], pedidos: [], usuario: null };
+  data = { productos: [], costeos: [], ventas: [], gastos: [], insumos: [], costeoDetallado: [], proveedores: [], clientes: [], pedidos: [], materiales: [], usuario: null };
 }
 
 /* ============ Persistencia en Firestore (usuarios/{uid}/...) ============ */
 
-const COLECCIONES = ['productos', 'insumos', 'costeos', 'costeoDetallado', 'ventas', 'gastos', 'proveedores', 'clientes', 'pedidos'];
+const COLECCIONES = ['productos', 'insumos', 'costeos', 'costeoDetallado', 'ventas', 'gastos', 'proveedores', 'clientes', 'pedidos', 'materiales'];
 
 function usuarioRef(uid) {
   return doc(db, 'usuarios', uid);
@@ -138,6 +139,9 @@ function borrarClienteRemoto(id) { return deleteDoc(documentoRef(currentUser.uid
 
 function guardarPedido(p) { return setDoc(documentoRef(currentUser.uid, 'pedidos', p.id), p); }
 function borrarPedidoRemoto(id) { return deleteDoc(documentoRef(currentUser.uid, 'pedidos', id)); }
+
+function guardarMaterial(m) { return setDoc(documentoRef(currentUser.uid, 'materiales', m.id), m); }
+function borrarMaterialRemoto(id) { return deleteDoc(documentoRef(currentUser.uid, 'materiales', id)); }
 
 /* Escucha en tiempo real las 8 colecciones del usuario: cualquier cambio (hecho desde
    este dispositivo o desde otro) actualiza "data" y vuelve a dibujar la pantalla.
@@ -195,6 +199,10 @@ function getPedido(id) {
   return data.pedidos.find(p => p.id === id) || null;
 }
 
+function getMaterial(id) {
+  return data.materiales.find(m => m.id === id) || null;
+}
+
 function categoriaDeUnidad(unidad) {
   if (unidad === 'gr' || unidad === 'kg') return 'masa';
   if (unidad === 'ml' || unidad === 'lt') return 'volumen';
@@ -250,6 +258,31 @@ function calcularCosteoDetallado(cd) {
   const rendimiento = Number(cd.rendimiento) > 0 ? Number(cd.rendimiento) : 1;
   const costoPorPieza = costoTotalReceta / rendimiento;
   return { costoInsumos, costoTotalReceta, rendimiento, costoPorPieza };
+}
+
+// Cuánto insumo consume vender "cantidadVendida" piezas de un producto, según
+// su receta de Costeo Detallado (si no usa costeo detallado, no hay forma de
+// saber qué insumos gastó, así que no se descuenta nada de existencia).
+function consumoInsumosPorVenta(productoId, cantidadVendida) {
+  const producto = data.productos.find(p => p.id === productoId);
+  if (!producto || !producto.usaCosteoDetallado) return [];
+  const cd = getCosteoDetallado(productoId);
+  if (!cd || !cd.items) return [];
+  const rendimiento = Number(cd.rendimiento) > 0 ? Number(cd.rendimiento) : 1;
+  return cd.items
+    .map(item => ({ insumoId: item.insumoId, cantidad: (Number(item.cantidad) || 0) / rendimiento * cantidadVendida }))
+    .filter(c => c.cantidad > 0);
+}
+
+// signo = -1 para descontar (venta), +1 para regresar (se borró la venta).
+function aplicarConsumoInsumos(consumo, signo) {
+  (consumo || []).forEach(c => {
+    const insumo = getInsumo(c.insumoId);
+    if (!insumo) return;
+    const actual = typeof insumo.existencia === 'number' ? insumo.existencia : 0;
+    insumo.existencia = actual + signo * c.cantidad;
+    guardarInsumo(insumo);
+  });
 }
 
 // Costo unitario de un producto, sin importar qué método de costeo use.
@@ -555,12 +588,14 @@ function renderCurrentScreen() {
   if (currentScreen === 'inicio') renderInicio();
   if (currentScreen === 'productos') renderProductos();
   if (currentScreen === 'insumos') renderInsumos();
+  if (currentScreen === 'materiales') renderMateriales();
   if (currentScreen === 'costeo') renderCosteo();
   if (currentScreen === 'ventas') renderVentas();
   if (currentScreen === 'pedidos') renderPedidos();
   if (currentScreen === 'gastos') renderGastos();
   if (currentScreen === 'proveedores') renderProveedores();
   if (currentScreen === 'clientes') renderClientes();
+  if (currentScreen === 'inventario') renderInventario();
   if (currentScreen === 'resumen') renderResumen();
   if (currentScreen === 'mi-plan') renderMiPlan();
   actualizarSidebarProShading();
@@ -570,12 +605,14 @@ function renderAll() {
   renderInicio();
   renderProductos();
   renderInsumos();
+  renderMateriales();
   renderCosteo();
   renderVentas();
   renderPedidos();
   renderGastos();
   renderProveedores();
   renderClientes();
+  renderInventario();
   renderResumen();
   renderMiPlan();
   actualizarSidebarProShading();
@@ -701,6 +738,48 @@ function renderInsumos() {
       </div>
     </li>
   `).join('');
+}
+
+/* ============ Render: Materiales ============ */
+
+function renderMateriales() {
+  const bloqueado = document.getElementById('materiales-bloqueado');
+  const contenido = document.getElementById('materiales-contenido');
+
+  if (!isPro()) {
+    bloqueado.style.display = 'flex';
+    contenido.style.display = 'none';
+    return;
+  }
+  bloqueado.style.display = 'none';
+  contenido.style.display = 'block';
+
+  const lista = document.getElementById('lista-materiales');
+  const vacio = document.getElementById('materiales-vacio');
+
+  if (data.materiales.length === 0) {
+    lista.innerHTML = '';
+    vacio.style.display = 'block';
+    return;
+  }
+  vacio.style.display = 'none';
+
+  lista.innerHTML = data.materiales.map(m => {
+    const costoPieza = m.cantidadComprada > 0 ? m.costoTotal / m.cantidadComprada : 0;
+    const detalle = [m.modelo, m.especificaciones, `${formatCurrency(costoPieza)} por pieza`, m.proveedor].filter(Boolean).join(' · ');
+    return `
+    <li class="item-card">
+      <div class="item-info">
+        <span class="item-title">${escapeHtml(m.nombre)}</span>
+        <span class="item-subtitle">${escapeHtml(detalle)}</span>
+      </div>
+      <div class="item-actions">
+        <button type="button" class="icon-btn" data-action="editar-material" data-id="${m.id}" aria-label="Editar">${ICON_PENCIL}</button>
+        <button type="button" class="icon-btn" data-action="eliminar-material" data-id="${m.id}" aria-label="Eliminar">${ICON_TRASH}</button>
+      </div>
+    </li>
+  `;
+  }).join('');
 }
 
 /* ============ Render: Costeo ============ */
@@ -936,6 +1015,58 @@ function renderPedidos() {
     </li>
   `;
   }).join('');
+}
+
+/* ============ Render: Inventario ============ */
+
+function renderFilaInventario(item, tipo, unidad) {
+  const tieneExistencia = typeof item.existencia === 'number';
+  const existenciaTexto = tieneExistencia ? `${item.existencia} ${unidad}` : 'Sin registrar';
+  const existenciaClase = tieneExistencia && item.existencia <= 0 ? 'inventario-existencia--baja' : '';
+  return `
+    <li class="item-card">
+      <div class="item-info">
+        <span class="item-title">${escapeHtml(item.nombre)}</span>
+        <span class="item-subtitle inventario-existencia ${existenciaClase}">${escapeHtml(existenciaTexto)}</span>
+      </div>
+      <div class="item-actions">
+        <button type="button" class="icon-btn" data-action="agregar-compra" data-tipo="${tipo}" data-id="${item.id}" aria-label="Agregar compra">${ICON_PLUS}</button>
+      </div>
+    </li>
+  `;
+}
+
+function renderInventario() {
+  const bloqueado = document.getElementById('inventario-bloqueado');
+  const contenido = document.getElementById('inventario-contenido');
+
+  if (!isPro()) {
+    bloqueado.style.display = 'flex';
+    contenido.style.display = 'none';
+    return;
+  }
+  bloqueado.style.display = 'none';
+  contenido.style.display = 'block';
+
+  const listaInsumos = document.getElementById('lista-inventario-insumos');
+  const vacioInsumos = document.getElementById('inventario-insumos-vacio');
+  if (data.insumos.length === 0) {
+    listaInsumos.innerHTML = '';
+    vacioInsumos.style.display = 'block';
+  } else {
+    vacioInsumos.style.display = 'none';
+    listaInsumos.innerHTML = data.insumos.map(i => renderFilaInventario(i, 'insumo', i.unidadCompra)).join('');
+  }
+
+  const listaMateriales = document.getElementById('lista-inventario-materiales');
+  const vacioMateriales = document.getElementById('inventario-materiales-vacio');
+  if (data.materiales.length === 0) {
+    listaMateriales.innerHTML = '';
+    vacioMateriales.style.display = 'block';
+  } else {
+    vacioMateriales.style.display = 'none';
+    listaMateriales.innerHTML = data.materiales.map(m => renderFilaInventario(m, 'material', 'pza')).join('');
+  }
 }
 
 /* ============ Render: Resumen ============ */
@@ -1188,6 +1319,36 @@ function openInsumoModal(id = null) {
   openModal('insumo');
 }
 
+function openMaterialModal(id = null) {
+  const form = document.getElementById('form-material');
+  form.reset();
+  document.getElementById('material-id').value = '';
+
+  if (id) {
+    const m = getMaterial(id);
+    if (m) {
+      document.getElementById('material-id').value = m.id;
+      document.getElementById('material-nombre').value = m.nombre;
+      document.getElementById('material-modelo').value = m.modelo || '';
+      document.getElementById('material-especificaciones').value = m.especificaciones || '';
+      document.getElementById('material-cantidad').value = m.cantidadComprada;
+      document.getElementById('material-costo').value = m.costoTotal;
+      document.getElementById('material-proveedor').value = m.proveedor || '';
+      document.getElementById('material-ticket').value = m.ticket || '';
+      document.getElementById('material-fecha').value = m.fecha || '';
+    }
+  }
+  actualizarPreviewMaterial();
+  openModal('material');
+}
+
+function actualizarPreviewMaterial() {
+  const cantidad = parseFloat(document.getElementById('material-cantidad').value) || 0;
+  const costo = parseFloat(document.getElementById('material-costo').value) || 0;
+  const preview = document.getElementById('material-costo-preview');
+  preview.textContent = cantidad > 0 ? `Costo por pieza: ${formatCurrency(costo / cantidad)}` : 'Costo por pieza: $0.00';
+}
+
 function actualizarPreviewInsumo() {
   const unidad = document.getElementById('insumo-unidad').value;
   const categoria = categoriaDeUnidad(unidad);
@@ -1248,6 +1409,29 @@ function openGastoModal() {
   document.getElementById('gasto-fecha').value = todayStr();
   document.getElementById('gasto-categoria').value = 'otros';
   openModal('gasto');
+}
+
+function abrirCompraModal(tipo, id) {
+  const item = tipo === 'material' ? getMaterial(id) : getInsumo(id);
+  if (!item) return;
+  document.getElementById('form-compra').reset();
+  document.getElementById('compra-tipo').value = tipo;
+  document.getElementById('compra-id').value = id;
+  document.getElementById('compra-fecha').value = todayStr();
+  const unidad = tipo === 'material' ? 'pza' : item.unidadCompra;
+  document.getElementById('compra-item-nombre').textContent =
+    `${item.nombre} · existencia actual: ${typeof item.existencia === 'number' ? item.existencia : 0} ${unidad}`;
+  actualizarPreviewCompra();
+  openModal('compra');
+}
+
+function actualizarPreviewCompra() {
+  const tipo = document.getElementById('compra-tipo').value;
+  const id = document.getElementById('compra-id').value;
+  const item = tipo === 'material' ? getMaterial(id) : getInsumo(id);
+  const existenciaActual = (item && typeof item.existencia === 'number') ? item.existencia : 0;
+  const cantidad = parseFloat(document.getElementById('compra-cantidad').value) || 0;
+  document.getElementById('compra-existencia-preview').textContent = existenciaActual + cantidad;
 }
 
 function actualizarPreviewPedido() {
@@ -1354,10 +1538,14 @@ async function eliminarInsumo(id) {
 
 async function eliminarVenta(id) {
   if (!await mostrarConfirmacion('¿Seguro que quieres borrar esta venta?')) return;
+  const venta = data.ventas.find(v => v.id === id);
   data.ventas = data.ventas.filter(v => v.id !== id);
   borrarVentaRemoto(id);
+  if (venta) aplicarConsumoInsumos(venta.consumoInsumos, 1);
   renderVentas();
   renderInicio();
+  renderInsumos();
+  renderInventario();
 }
 
 async function eliminarGasto(id) {
@@ -1373,6 +1561,14 @@ async function eliminarPedido(id) {
   data.pedidos = data.pedidos.filter(p => p.id !== id);
   borrarPedidoRemoto(id);
   renderPedidos();
+}
+
+async function eliminarMaterial(id) {
+  if (!await mostrarConfirmacion('¿Seguro que quieres borrar este material?')) return;
+  data.materiales = data.materiales.filter(m => m.id !== id);
+  borrarMaterialRemoto(id);
+  renderMateriales();
+  renderInventario();
 }
 
 function toggleEstadoPedido(id) {
@@ -1846,7 +2042,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('click', e => {
     const btn = e.target.closest('button[data-action]');
     if (!btn) return;
-    const { action, id } = btn.dataset;
+    const { action, id, tipo } = btn.dataset;
     if (action === 'editar-producto') openProductoModal(id);
     if (action === 'eliminar-producto') eliminarProducto(id);
     if (action === 'editar-costeo') openEditCosteoForProduct(id);
@@ -1862,6 +2058,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (action === 'editar-pedido') openPedidoModal(id);
     if (action === 'eliminar-pedido') eliminarPedido(id);
     if (action === 'toggle-estado-pedido') toggleEstadoPedido(id);
+    if (action === 'editar-material') openMaterialModal(id);
+    if (action === 'eliminar-material') eliminarMaterial(id);
+    if (action === 'agregar-compra') abrirCompraModal(tipo, id);
   });
 
   /* Formulario: Producto */
@@ -1940,6 +2139,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const clienteId = document.getElementById('venta-cliente-select').value;
     const cliente = clienteId ? getCliente(clienteId) : null;
 
+    const consumoInsumos = consumoInsumosPorVenta(productoId, cantidad);
+
     const nuevaVenta = {
       id: uid(),
       folio: siguienteFolio('V', data.ventas),
@@ -1951,13 +2152,17 @@ document.addEventListener('DOMContentLoaded', () => {
       fecha,
       via,
       clienteId,
-      clienteNombre: cliente ? [cliente.nombre, cliente.apellido].filter(Boolean).join(' ') : ''
+      clienteNombre: cliente ? [cliente.nombre, cliente.apellido].filter(Boolean).join(' ') : '',
+      consumoInsumos
     };
     data.ventas.push(nuevaVenta);
     guardarVenta(nuevaVenta);
+    aplicarConsumoInsumos(consumoInsumos, -1);
     closeModal();
     renderVentas();
     renderInicio();
+    renderInsumos();
+    renderInventario();
   });
 
   /* Formulario: Pedido */
@@ -2119,12 +2324,85 @@ document.addEventListener('DOMContentLoaded', () => {
       i.fecha = fecha;
       guardarInsumo(i);
     } else {
-      const nuevo = { id: uid(), nombre, unidadCompra, categoria, cantidadComprada, precioPagado, proveedor, marca, ticket, fecha };
+      // La primera vez que se registra un insumo, esa cantidad comprada es
+      // también su primera existencia. De ahí en adelante, subir existencia
+      // se hace con "Agregar compra" en Inventario, no editando este formulario.
+      const nuevo = { id: uid(), nombre, unidadCompra, categoria, cantidadComprada, precioPagado, proveedor, marca, ticket, fecha, existencia: cantidadComprada };
       data.insumos.push(nuevo);
       guardarInsumo(nuevo);
     }
     closeModal();
     renderInsumos();
+    renderInventario();
+  });
+
+  /* Formulario: Materiales */
+  document.getElementById('btn-add-material').addEventListener('click', () => openMaterialModal());
+  ['material-cantidad', 'material-costo'].forEach(id => {
+    document.getElementById(id).addEventListener('input', actualizarPreviewMaterial);
+  });
+  document.getElementById('form-material').addEventListener('submit', e => {
+    e.preventDefault();
+    const id = document.getElementById('material-id').value;
+    const nombre = document.getElementById('material-nombre').value.trim();
+    const modelo = document.getElementById('material-modelo').value.trim();
+    const especificaciones = document.getElementById('material-especificaciones').value.trim();
+    const cantidadComprada = parseFloat(document.getElementById('material-cantidad').value);
+    const costoTotal = parseFloat(document.getElementById('material-costo').value);
+    const proveedor = document.getElementById('material-proveedor').value.trim();
+    const ticket = document.getElementById('material-ticket').value.trim();
+    const fecha = document.getElementById('material-fecha').value;
+
+    if (!nombre || isNaN(cantidadComprada) || cantidadComprada <= 0 || isNaN(costoTotal) || costoTotal < 0) return;
+
+    if (id) {
+      const m = getMaterial(id);
+      m.nombre = nombre;
+      m.modelo = modelo;
+      m.especificaciones = especificaciones;
+      m.cantidadComprada = cantidadComprada;
+      m.costoTotal = costoTotal;
+      m.proveedor = proveedor;
+      m.ticket = ticket;
+      m.fecha = fecha;
+      guardarMaterial(m);
+    } else {
+      // Igual que con Insumos: la primera compra es la existencia inicial;
+      // de ahí en adelante se sube con "Agregar compra" en Inventario.
+      const nuevo = { id: uid(), nombre, modelo, especificaciones, cantidadComprada, costoTotal, proveedor, ticket, fecha, existencia: cantidadComprada };
+      data.materiales.push(nuevo);
+      guardarMaterial(nuevo);
+    }
+    closeModal();
+    renderMateriales();
+    renderInventario();
+  });
+
+  /* Formulario: Agregar compra (Inventario) */
+  document.getElementById('compra-cantidad').addEventListener('input', actualizarPreviewCompra);
+  document.getElementById('form-compra').addEventListener('submit', e => {
+    e.preventDefault();
+    const tipo = document.getElementById('compra-tipo').value;
+    const id = document.getElementById('compra-id').value;
+    const cantidad = parseFloat(document.getElementById('compra-cantidad').value);
+    const fecha = document.getElementById('compra-fecha').value;
+    if (isNaN(cantidad) || cantidad <= 0 || !fecha) return;
+
+    if (tipo === 'material') {
+      const m = getMaterial(id);
+      if (!m) return;
+      m.existencia = (typeof m.existencia === 'number' ? m.existencia : 0) + cantidad;
+      guardarMaterial(m);
+      renderMateriales();
+    } else {
+      const i = getInsumo(id);
+      if (!i) return;
+      i.existencia = (typeof i.existencia === 'number' ? i.existencia : 0) + cantidad;
+      guardarInsumo(i);
+      renderInsumos();
+    }
+    closeModal();
+    renderInventario();
   });
 
   /* Formulario: Costeo Detallado */

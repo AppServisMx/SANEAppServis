@@ -1016,6 +1016,19 @@ body.state-auth .auth-gate {
   padding: 0 12px;
 }
 
+.inventario-subtitulo {
+  font-size: 15px;
+  margin: 20px 0 8px;
+}
+
+.inventario-existencia {
+  font-weight: 700;
+}
+
+.inventario-existencia--baja {
+  color: var(--color-orange);
+}
+
 /* ---------- Advertencia de Gastos ---------- */
 
 .warning-banner {
