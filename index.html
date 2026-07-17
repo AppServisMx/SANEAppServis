@@ -212,6 +212,14 @@
         <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12a1 1 0 0 1 1 1v16l-2-1.2-2 1.2-2-1.2-2 1.2-2-1.2-2 1.2V4a1 1 0 0 1 1-1z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
         <span class="sidebar-link-label">Gastos</span>
       </button>
+      <button type="button" class="nav-btn sidebar-link" data-screen="proveedores">
+        <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h10v8H3z"/><path d="M13 10h4l3 3v2h-7z"/><circle cx="7.5" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/></svg>
+        <span class="sidebar-link-label">Proveedores</span>
+      </button>
+      <button type="button" class="nav-btn sidebar-link" data-screen="clientes">
+        <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c0-3.6 3.1-6.2 7-6.2s7 2.6 7 6.2"/></svg>
+        <span class="sidebar-link-label">Clientes</span>
+      </button>
       <button type="button" class="nav-btn sidebar-link" data-screen="resumen">
         <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="20" x2="5" y2="11"/><line x1="12" y1="20" x2="12" y2="5"/><line x1="19" y1="20" x2="19" y2="14"/></svg>
         <span class="sidebar-link-label">Resumen</span>
@@ -376,6 +384,34 @@
         </button>
         <ul id="lista-gastos" class="item-list"></ul>
         <p id="gastos-vacio" class="empty-hint">Aún no has anotado ningún gasto. Toca "Gasté en algo" para empezar.</p>
+      </section>
+
+      <!-- ===================== PROVEEDORES ===================== -->
+      <section id="screen-proveedores" class="screen">
+        <header class="section-header">
+          <h2>Proveedores</h2>
+          <p class="section-subtitle">De dónde compras lo que necesitas</p>
+        </header>
+        <button type="button" id="btn-add-proveedor" class="add-btn">
+          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          Agregar proveedor
+        </button>
+        <ul id="lista-proveedores" class="item-list"></ul>
+        <p id="proveedores-vacio" class="empty-hint">Aún no has agregado ningún proveedor. Toca "Agregar proveedor" para empezar.</p>
+      </section>
+
+      <!-- ===================== CLIENTES ===================== -->
+      <section id="screen-clientes" class="screen">
+        <header class="section-header">
+          <h2>Clientes</h2>
+          <p class="section-subtitle">A quién le vendes</p>
+        </header>
+        <button type="button" id="btn-add-cliente" class="add-btn">
+          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          Agregar cliente
+        </button>
+        <ul id="lista-clientes" class="item-list"></ul>
+        <p id="clientes-vacio" class="empty-hint">Aún no has agregado ningún cliente. Toca "Agregar cliente" para empezar.</p>
       </section>
 
       <!-- ===================== RESUMEN ===================== -->
@@ -676,6 +712,81 @@
           </div>
         </form>
 
+        <form id="form-proveedor" class="modal-form" data-modal="proveedor">
+          <div class="modal-header">
+            <h3>Proveedor</h3>
+            <button type="button" class="modal-close-x" data-close-modal aria-label="Cerrar">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="proveedor-id">
+            <label>¿Cómo se llama?
+              <input type="text" id="proveedor-nombre" required placeholder="Ej. Dawn Foods">
+            </label>
+            <label>¿Con quién tratas? (opcional)
+              <input type="text" id="proveedor-contacto" placeholder="Ej. Nicolás Torres">
+            </label>
+            <label>Teléfono (opcional)
+              <input type="text" id="proveedor-telefono" placeholder="Ej. 8116359874">
+            </label>
+            <label>Domicilio (opcional)
+              <input type="text" id="proveedor-domicilio" placeholder="Ej. Martel 300, Santa Catarina">
+            </label>
+            <label>Horario (opcional)
+              <input type="text" id="proveedor-horario" placeholder="Ej. L-V 8 a 17 hrs">
+            </label>
+            <label>Observaciones (opcional)
+              <input type="text" id="proveedor-observaciones" placeholder="Ej. Pedido mínimo $2000">
+            </label>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn-secondary" data-close-modal>Cancelar</button>
+            <button type="submit" class="btn-primary">Guardar</button>
+          </div>
+        </form>
+
+        <form id="form-cliente" class="modal-form" data-modal="cliente">
+          <div class="modal-header">
+            <h3>Cliente</h3>
+            <button type="button" class="modal-close-x" data-close-modal aria-label="Cerrar">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="cliente-id">
+            <label>Nombre
+              <input type="text" id="cliente-nombre" required placeholder="Ej. María">
+            </label>
+            <label>Apellido (opcional)
+              <input type="text" id="cliente-apellido" placeholder="Ej. González">
+            </label>
+            <label>Teléfono (opcional)
+              <input type="text" id="cliente-telefono" placeholder="Ej. 8112345678">
+            </label>
+            <label>Celular (opcional)
+              <input type="text" id="cliente-celular" placeholder="Ej. 8187654321">
+            </label>
+            <label>Email (opcional)
+              <input type="email" id="cliente-email" placeholder="Ej. maria@ejemplo.com">
+            </label>
+            <label>¿Cómo te encontró? (opcional)
+              <select id="cliente-fuente">
+                <option value="" selected>Sin especificar</option>
+                <option value="instagram">Instagram</option>
+                <option value="facebook">Facebook</option>
+                <option value="whatsapp">WhatsApp</option>
+                <option value="recomendacion">Recomendación</option>
+                <option value="otro">Otro</option>
+              </select>
+            </label>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn-secondary" data-close-modal>Cancelar</button>
+            <button type="submit" class="btn-primary">Guardar</button>
+          </div>
+        </form>
+
         <form id="form-insumo" class="modal-form" data-modal="insumo">
           <div class="modal-header">
             <h3>¿Qué compraste?</h3>
@@ -705,6 +816,15 @@
             </label>
             <label>¿Dónde lo compraste? (opcional)
               <input type="text" id="insumo-proveedor" placeholder="Ej. Walmart">
+            </label>
+            <label>¿Qué marca? (opcional)
+              <input type="text" id="insumo-marca" placeholder="Ej. Dawn">
+            </label>
+            <label>¿Ticket o folio? (opcional)
+              <input type="text" id="insumo-ticket" placeholder="Ej. 526119">
+            </label>
+            <label>¿Cuándo lo compraste? (opcional)
+              <input type="date" id="insumo-fecha">
             </label>
             <div class="modal-total">
               <span id="insumo-costo-preview">Costo por unidad: $0.00</span>

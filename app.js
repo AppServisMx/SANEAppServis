@@ -78,15 +78,15 @@ function offsetDateStr(daysAgo) {
 
 /* ============ Datos (en memoria, sincronizados con Firestore) ============ */
 
-let data = { productos: [], costeos: [], ventas: [], gastos: [], insumos: [], costeoDetallado: [], usuario: null };
+let data = { productos: [], costeos: [], ventas: [], gastos: [], insumos: [], costeoDetallado: [], proveedores: [], clientes: [], usuario: null };
 
 function vaciarData() {
-  data = { productos: [], costeos: [], ventas: [], gastos: [], insumos: [], costeoDetallado: [], usuario: null };
+  data = { productos: [], costeos: [], ventas: [], gastos: [], insumos: [], costeoDetallado: [], proveedores: [], clientes: [], usuario: null };
 }
 
 /* ============ Persistencia en Firestore (usuarios/{uid}/...) ============ */
 
-const COLECCIONES = ['productos', 'insumos', 'costeos', 'costeoDetallado', 'ventas', 'gastos'];
+const COLECCIONES = ['productos', 'insumos', 'costeos', 'costeoDetallado', 'ventas', 'gastos', 'proveedores', 'clientes'];
 
 function usuarioRef(uid) {
   return doc(db, 'usuarios', uid);
@@ -118,7 +118,13 @@ function borrarVentaRemoto(id) { return deleteDoc(documentoRef(currentUser.uid, 
 function guardarGasto(g) { return setDoc(documentoRef(currentUser.uid, 'gastos', g.id), g); }
 function borrarGastoRemoto(id) { return deleteDoc(documentoRef(currentUser.uid, 'gastos', id)); }
 
-/* Escucha en tiempo real las 6 colecciones del usuario: cualquier cambio (hecho desde
+function guardarProveedor(p) { return setDoc(documentoRef(currentUser.uid, 'proveedores', p.id), p); }
+function borrarProveedorRemoto(id) { return deleteDoc(documentoRef(currentUser.uid, 'proveedores', id)); }
+
+function guardarCliente(c) { return setDoc(documentoRef(currentUser.uid, 'clientes', c.id), c); }
+function borrarClienteRemoto(id) { return deleteDoc(documentoRef(currentUser.uid, 'clientes', id)); }
+
+/* Escucha en tiempo real las 8 colecciones del usuario: cualquier cambio (hecho desde
    este dispositivo o desde otro) actualiza "data" y vuelve a dibujar la pantalla.
    Así se logra la sincronización automática, sin botón "Guardar". */
 function attachDataListeners(uid) {
@@ -160,6 +166,14 @@ function costoTotalUnitario(c) {
 
 function getInsumo(id) {
   return data.insumos.find(i => i.id === id) || null;
+}
+
+function getProveedor(id) {
+  return data.proveedores.find(p => p.id === id) || null;
+}
+
+function getCliente(id) {
+  return data.clientes.find(c => c.id === id) || null;
 }
 
 function categoriaDeUnidad(unidad) {
@@ -525,6 +539,8 @@ function renderCurrentScreen() {
   if (currentScreen === 'costeo') renderCosteo();
   if (currentScreen === 'ventas') renderVentas();
   if (currentScreen === 'gastos') renderGastos();
+  if (currentScreen === 'proveedores') renderProveedores();
+  if (currentScreen === 'clientes') renderClientes();
   if (currentScreen === 'resumen') renderResumen();
   if (currentScreen === 'mi-plan') renderMiPlan();
   actualizarSidebarProShading();
@@ -537,6 +553,8 @@ function renderAll() {
   renderCosteo();
   renderVentas();
   renderGastos();
+  renderProveedores();
+  renderClientes();
   renderResumen();
   renderMiPlan();
   actualizarSidebarProShading();
@@ -767,6 +785,75 @@ function renderGastos() {
   `).join('');
 }
 
+/* ============ Render: Proveedores ============ */
+
+function renderProveedores() {
+  const lista = document.getElementById('lista-proveedores');
+  const vacio = document.getElementById('proveedores-vacio');
+
+  if (data.proveedores.length === 0) {
+    lista.innerHTML = '';
+    vacio.style.display = 'block';
+    return;
+  }
+  vacio.style.display = 'none';
+
+  lista.innerHTML = data.proveedores.map(p => {
+    const detalle = [p.contacto, p.telefono].filter(Boolean).join(' · ');
+    return `
+    <li class="item-card">
+      <div class="item-info">
+        <span class="item-title">${escapeHtml(p.nombre)}</span>
+        <span class="item-subtitle">${detalle ? escapeHtml(detalle) : 'Sin datos de contacto'}</span>
+      </div>
+      <div class="item-actions">
+        <button type="button" class="icon-btn" data-action="editar-proveedor" data-id="${p.id}" aria-label="Editar">${ICON_PENCIL}</button>
+        <button type="button" class="icon-btn" data-action="eliminar-proveedor" data-id="${p.id}" aria-label="Eliminar">${ICON_TRASH}</button>
+      </div>
+    </li>
+  `;
+  }).join('');
+}
+
+/* ============ Render: Clientes ============ */
+
+const FUENTE_LABEL = {
+  instagram: 'Instagram',
+  facebook: 'Facebook',
+  whatsapp: 'WhatsApp',
+  recomendacion: 'Recomendación',
+  otro: 'Otro'
+};
+
+function renderClientes() {
+  const lista = document.getElementById('lista-clientes');
+  const vacio = document.getElementById('clientes-vacio');
+
+  if (data.clientes.length === 0) {
+    lista.innerHTML = '';
+    vacio.style.display = 'block';
+    return;
+  }
+  vacio.style.display = 'none';
+
+  lista.innerHTML = data.clientes.map(c => {
+    const nombreCompleto = [c.nombre, c.apellido].filter(Boolean).join(' ');
+    const detalle = [c.telefono || c.celular, FUENTE_LABEL[c.fuente]].filter(Boolean).join(' · ');
+    return `
+    <li class="item-card">
+      <div class="item-info">
+        <span class="item-title">${escapeHtml(nombreCompleto)}</span>
+        <span class="item-subtitle">${detalle ? escapeHtml(detalle) : 'Sin datos de contacto'}</span>
+      </div>
+      <div class="item-actions">
+        <button type="button" class="icon-btn" data-action="editar-cliente" data-id="${c.id}" aria-label="Editar">${ICON_PENCIL}</button>
+        <button type="button" class="icon-btn" data-action="eliminar-cliente" data-id="${c.id}" aria-label="Eliminar">${ICON_TRASH}</button>
+      </div>
+    </li>
+  `;
+  }).join('');
+}
+
 /* ============ Render: Resumen ============ */
 
 function renderResumen() {
@@ -991,6 +1078,9 @@ function openInsumoModal(id = null) {
       document.getElementById('insumo-cantidad').value = i.cantidadComprada;
       document.getElementById('insumo-precio').value = i.precioPagado;
       document.getElementById('insumo-proveedor').value = i.proveedor || '';
+      document.getElementById('insumo-marca').value = i.marca || '';
+      document.getElementById('insumo-ticket').value = i.ticket || '';
+      document.getElementById('insumo-fecha').value = i.fecha || '';
     }
   }
   actualizarPreviewInsumo();
@@ -1052,6 +1142,46 @@ function openGastoModal() {
   openModal('gasto');
 }
 
+function openProveedorModal(id = null) {
+  const form = document.getElementById('form-proveedor');
+  form.reset();
+  document.getElementById('proveedor-id').value = '';
+
+  if (id) {
+    const p = getProveedor(id);
+    if (p) {
+      document.getElementById('proveedor-id').value = p.id;
+      document.getElementById('proveedor-nombre').value = p.nombre;
+      document.getElementById('proveedor-contacto').value = p.contacto || '';
+      document.getElementById('proveedor-telefono').value = p.telefono || '';
+      document.getElementById('proveedor-domicilio').value = p.domicilio || '';
+      document.getElementById('proveedor-horario').value = p.horario || '';
+      document.getElementById('proveedor-observaciones').value = p.observaciones || '';
+    }
+  }
+  openModal('proveedor');
+}
+
+function openClienteModal(id = null) {
+  const form = document.getElementById('form-cliente');
+  form.reset();
+  document.getElementById('cliente-id').value = '';
+
+  if (id) {
+    const c = getCliente(id);
+    if (c) {
+      document.getElementById('cliente-id').value = c.id;
+      document.getElementById('cliente-nombre').value = c.nombre;
+      document.getElementById('cliente-apellido').value = c.apellido || '';
+      document.getElementById('cliente-telefono').value = c.telefono || '';
+      document.getElementById('cliente-celular').value = c.celular || '';
+      document.getElementById('cliente-email').value = c.email || '';
+      document.getElementById('cliente-fuente').value = c.fuente || '';
+    }
+  }
+  openModal('cliente');
+}
+
 /* ============ Acciones: eliminar ============ */
 
 async function eliminarProducto(id) {
@@ -1095,6 +1225,20 @@ async function eliminarGasto(id) {
   borrarGastoRemoto(id);
   renderGastos();
   renderInicio();
+}
+
+async function eliminarProveedor(id) {
+  if (!await mostrarConfirmacion('¿Seguro que quieres borrar este proveedor?')) return;
+  data.proveedores = data.proveedores.filter(p => p.id !== id);
+  borrarProveedorRemoto(id);
+  renderProveedores();
+}
+
+async function eliminarCliente(id) {
+  if (!await mostrarConfirmacion('¿Seguro que quieres borrar este cliente?')) return;
+  data.clientes = data.clientes.filter(c => c.id !== id);
+  borrarClienteRemoto(id);
+  renderClientes();
 }
 
 /* ============ Cuentas (Firebase Authentication) ============ */
@@ -1555,6 +1699,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (action === 'eliminar-gasto') eliminarGasto(id);
     if (action === 'editar-insumo') openInsumoModal(id);
     if (action === 'eliminar-insumo') eliminarInsumo(id);
+    if (action === 'editar-proveedor') openProveedorModal(id);
+    if (action === 'eliminar-proveedor') eliminarProveedor(id);
+    if (action === 'editar-cliente') openClienteModal(id);
+    if (action === 'eliminar-cliente') eliminarCliente(id);
   });
 
   /* Formulario: Producto */
@@ -1657,6 +1805,68 @@ document.addEventListener('DOMContentLoaded', () => {
     renderInicio();
   });
 
+  /* Formulario: Proveedores */
+  document.getElementById('btn-add-proveedor').addEventListener('click', () => openProveedorModal());
+  document.getElementById('form-proveedor').addEventListener('submit', e => {
+    e.preventDefault();
+    const id = document.getElementById('proveedor-id').value;
+    const nombre = document.getElementById('proveedor-nombre').value.trim();
+    const contacto = document.getElementById('proveedor-contacto').value.trim();
+    const telefono = document.getElementById('proveedor-telefono').value.trim();
+    const domicilio = document.getElementById('proveedor-domicilio').value.trim();
+    const horario = document.getElementById('proveedor-horario').value.trim();
+    const observaciones = document.getElementById('proveedor-observaciones').value.trim();
+    if (!nombre) return;
+
+    if (id) {
+      const p = getProveedor(id);
+      p.nombre = nombre;
+      p.contacto = contacto;
+      p.telefono = telefono;
+      p.domicilio = domicilio;
+      p.horario = horario;
+      p.observaciones = observaciones;
+      guardarProveedor(p);
+    } else {
+      const nuevo = { id: uid(), nombre, contacto, telefono, domicilio, horario, observaciones };
+      data.proveedores.push(nuevo);
+      guardarProveedor(nuevo);
+    }
+    closeModal();
+    renderProveedores();
+  });
+
+  /* Formulario: Clientes */
+  document.getElementById('btn-add-cliente').addEventListener('click', () => openClienteModal());
+  document.getElementById('form-cliente').addEventListener('submit', e => {
+    e.preventDefault();
+    const id = document.getElementById('cliente-id').value;
+    const nombre = document.getElementById('cliente-nombre').value.trim();
+    const apellido = document.getElementById('cliente-apellido').value.trim();
+    const telefono = document.getElementById('cliente-telefono').value.trim();
+    const celular = document.getElementById('cliente-celular').value.trim();
+    const email = document.getElementById('cliente-email').value.trim();
+    const fuente = document.getElementById('cliente-fuente').value;
+    if (!nombre) return;
+
+    if (id) {
+      const c = getCliente(id);
+      c.nombre = nombre;
+      c.apellido = apellido;
+      c.telefono = telefono;
+      c.celular = celular;
+      c.email = email;
+      c.fuente = fuente;
+      guardarCliente(c);
+    } else {
+      const nuevo = { id: uid(), nombre, apellido, telefono, celular, email, fuente };
+      data.clientes.push(nuevo);
+      guardarCliente(nuevo);
+    }
+    closeModal();
+    renderClientes();
+  });
+
   /* Formulario: Mis Insumos */
   document.getElementById('btn-add-insumo').addEventListener('click', () => openInsumoModal());
   ['insumo-unidad', 'insumo-cantidad', 'insumo-precio'].forEach(id => {
@@ -1672,6 +1882,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const cantidadComprada = parseFloat(document.getElementById('insumo-cantidad').value);
     const precioPagado = parseFloat(document.getElementById('insumo-precio').value);
     const proveedor = document.getElementById('insumo-proveedor').value.trim();
+    const marca = document.getElementById('insumo-marca').value.trim();
+    const ticket = document.getElementById('insumo-ticket').value.trim();
+    const fecha = document.getElementById('insumo-fecha').value;
 
     if (!nombre || isNaN(cantidadComprada) || cantidadComprada <= 0 || isNaN(precioPagado) || precioPagado < 0) return;
 
@@ -1683,9 +1896,12 @@ document.addEventListener('DOMContentLoaded', () => {
       i.cantidadComprada = cantidadComprada;
       i.precioPagado = precioPagado;
       i.proveedor = proveedor;
+      i.marca = marca;
+      i.ticket = ticket;
+      i.fecha = fecha;
       guardarInsumo(i);
     } else {
-      const nuevo = { id: uid(), nombre, unidadCompra, categoria, cantidadComprada, precioPagado, proveedor };
+      const nuevo = { id: uid(), nombre, unidadCompra, categoria, cantidadComprada, precioPagado, proveedor, marca, ticket, fecha };
       data.insumos.push(nuevo);
       guardarInsumo(nuevo);
     }
