@@ -101,7 +101,7 @@ body.state-app .layout {
   padding-bottom: 24px;
 }
 
-/* ---------- Interruptor Básico/Pro (solo para desarrollo): barra fija superior, visible en todo tamaño de pantalla ---------- */
+/* ---------- Barra superior fija (cuenta + acceso a Mi plan), visible en todo tamaño de pantalla ---------- */
 
 .app-topbar-global {
   position: sticky;
@@ -109,36 +109,16 @@ body.state-app .layout {
   z-index: 15;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   flex-wrap: wrap;
   gap: 8px;
   min-width: 0;
   padding: 8px 16px;
   background: var(--color-surface);
-  border-bottom: 1px dashed #D9CCF5;
+  border-bottom: 1px solid #EEE6FB;
 }
 
-.plan-dev-toggle-inline {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  min-width: 0;
-}
-
-.plan-dev-label {
-  font-size: 10px;
-  color: var(--color-text-muted);
-  white-space: nowrap;
-}
-
-.plan-dev-pills {
-  display: flex;
-  gap: 4px;
-  flex-shrink: 0;
-}
-
-/* ---------- Barra de cuenta (nombre + cerrar sesión), siempre visible junto al interruptor de desarrollo ---------- */
+/* ---------- Barra de cuenta (nombre + Mi plan + cerrar sesión) ---------- */
 
 .account-bar {
   display: flex;
@@ -154,6 +134,17 @@ body.state-app .layout {
   color: var(--color-text-muted);
   overflow-wrap: break-word;
   min-width: 0;
+}
+
+.account-bar-link {
+  border: none;
+  background: none;
+  color: var(--color-violet-dark);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: underline;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .account-bar-logout {
@@ -477,17 +468,152 @@ body.state-auth .auth-gate {
   flex: 1;
 }
 
-.plan-dev-btn {
-  border: none;
-  background: var(--color-bg);
-  color: var(--color-text-muted);
-  font-size: 11px;
-  font-weight: 700;
-  padding: 6px 14px;
+/* ---------- Mi plan ---------- */
+
+.mi-plan-card {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.mi-plan-actual {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.mi-plan-badge {
+  background: var(--color-violet);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 6px 16px;
   border-radius: 999px;
 }
 
-.plan-dev-btn.active {
+.mi-plan-estado {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.mi-plan-siguiente {
+  margin-top: 14px;
+  font-size: 14px;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.mi-plan-activar {
+  margin-top: 14px;
+  width: 100%;
+}
+
+.mi-plan-beneficios {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.mi-plan-columna {
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  box-shadow: var(--shadow-card);
+}
+
+.mi-plan-columna h3 {
+  font-size: 15px;
+  margin-bottom: 8px;
+}
+
+.mi-plan-columna ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13.5px;
+  color: var(--color-text-muted);
+  line-height: 1.7;
+}
+
+.mi-plan-columna--pro {
+  background: var(--color-violet-light);
+}
+
+.mi-plan-columna--pro h3 {
+  color: var(--color-violet-dark);
+}
+
+@media (min-width: 768px) {
+  .mi-plan-beneficios {
+    flex-direction: row;
+  }
+  .mi-plan-columna {
+    flex: 1;
+  }
+}
+
+/* ---------- Panel administrativo (estructura preliminar) ---------- */
+
+.admin-plan-buscador {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.admin-plan-buscador label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.admin-plan-buscador input {
+  font-family: inherit;
+  font-size: 15px;
+  padding: 11px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid #E4DAF7;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.admin-plan-resultado {
+  display: none;
+  margin-top: 16px;
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  padding: 16px 18px;
+}
+
+.admin-plan-resultado.mostrar {
+  display: block;
+}
+
+.admin-plan-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.admin-plan-btn {
+  border: none;
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 8px 16px;
+  border-radius: 999px;
+}
+
+.admin-plan-btn.active {
   background: var(--color-violet);
   color: #fff;
 }

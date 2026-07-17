@@ -1,5 +1,6 @@
 /* SANE - Sistema Administrativo para Nuevos Emprendedores (desarrollado por App Servis)
    FASE 2: cuentas reales (Firebase Authentication) y datos en la nube (Cloud Firestore).
+   FASE 3: planes y suscripciones (Básico/Pro) controlados desde Firestore, sin cobro todavía.
    Sin frameworks, sin librerías externas más que el SDK de Firebase. */
 
 import {
@@ -12,7 +13,9 @@ import {
 
 const STORAGE_KEY = 'emprendedoresAppServis_v1'; // datos locales de versiones anteriores (para migración)
 const SIDEBAR_STORAGE_KEY = 'emprendedoresAppServis_sidebar_collapsed';
-const PLAN_STORAGE_KEY = 'saneAppServis_plan_dev';
+
+// Límites de ejemplo del plan Básico (ajustables; no son precios, son topes de uso).
+const LIMITES_BASICO = { productos: 15, ventasPorMes: 50 };
 
 let currentScreen = 'inicio';
 let currentPeriod = 'dia';
@@ -71,10 +74,10 @@ function offsetDateStr(daysAgo) {
 
 /* ============ Datos (en memoria, sincronizados con Firestore) ============ */
 
-let data = { productos: [], costeos: [], ventas: [], gastos: [], insumos: [], costeoDetallado: [] };
+let data = { productos: [], costeos: [], ventas: [], gastos: [], insumos: [], costeoDetallado: [], usuario: null };
 
 function vaciarData() {
-  data = { productos: [], costeos: [], ventas: [], gastos: [], insumos: [], costeoDetallado: [] };
+  data = { productos: [], costeos: [], ventas: [], gastos: [], insumos: [], costeoDetallado: [], usuario: null };
 }
 
 /* ============ Persistencia en Firestore (usuarios/{uid}/...) ============ */
@@ -125,8 +128,22 @@ function attachDataListeners(uid) {
     });
     dataUnsubscribers.push(unsub);
   }));
+
+  // Documento del propio usuario (nombre, correo, plan, estadoPlan, suscripción):
+  // se escucha en tiempo real para que un cambio de plan (desde Mi Plan, el panel
+  // administrativo, o desde otro dispositivo) se refleje aquí automáticamente.
+  const primeraCargaUsuario = new Promise(resolve => {
+    let yaResolvio = false;
+    const unsub = onSnapshot(usuarioRef(uid), snap => {
+      data.usuario = snap.exists() ? snap.data() : null;
+      renderAll();
+      if (!yaResolvio) { yaResolvio = true; resolve(); }
+    });
+    dataUnsubscribers.push(unsub);
+  });
+
   document.getElementById('data-loading-overlay').classList.add('open');
-  Promise.all(primerasCargas).then(() => {
+  Promise.all([...primerasCargas, primeraCargaUsuario]).then(() => {
     document.getElementById('data-loading-overlay').classList.remove('open');
   });
 }
@@ -221,18 +238,62 @@ function getCostoUnitarioProducto(productoId) {
   return c ? costoTotalUnitario(c) : 0;
 }
 
-/* ---- Modo Básico / Pro (interruptor solo para desarrollo) ---- */
+/* ---- Plan Básico / Pro (real, guardado en Firestore) ---- */
 
 function getPlanMode() {
-  return localStorage.getItem(PLAN_STORAGE_KEY) === 'pro' ? 'pro' : 'basico';
+  return (data.usuario && data.usuario.plan === 'pro') ? 'pro' : 'basico';
 }
 
+function getEstadoPlan() {
+  return (data.usuario && data.usuario.estadoPlan) || 'activo';
+}
+
+// Un plan Pro suspendido o cancelado pierde los beneficios Pro hasta reactivarse.
 function isPro() {
-  return getPlanMode() === 'pro';
+  return getPlanMode() === 'pro' && getEstadoPlan() === 'activo';
 }
 
-function setPlanMode(mode) {
-  localStorage.setItem(PLAN_STORAGE_KEY, mode);
+async function cambiarPlanPropio(nuevoPlan) {
+  await setDoc(usuarioRef(currentUser.uid), {
+    plan: nuevoPlan,
+    estadoPlan: 'activo',
+    fechaActualizacionPlan: serverTimestamp()
+  }, { merge: true });
+}
+
+/* ---- Límites del plan Básico ---- */
+
+function ventasDelMesActual() {
+  const hoy = new Date();
+  return data.ventas.filter(v => {
+    const f = parseDateStr(v.fecha);
+    return f.getFullYear() === hoy.getFullYear() && f.getMonth() === hoy.getMonth();
+  }).length;
+}
+
+function mostrarLimitePlan(mensaje) {
+  document.getElementById('limite-plan-mensaje').textContent = mensaje;
+  document.getElementById('limite-plan-overlay').classList.add('open');
+}
+
+// Antes de crear un producto o venta nuevos, confirma que el plan Básico no haya
+// llegado a su tope; si ya llegó, muestra el aviso elegante y detiene la acción.
+function puedeAgregarProducto() {
+  if (isPro()) return true;
+  if (data.productos.length >= LIMITES_BASICO.productos) {
+    mostrarLimitePlan(`Con el plan Básico puedes tener hasta ${LIMITES_BASICO.productos} productos.`);
+    return false;
+  }
+  return true;
+}
+
+function puedeAgregarVenta() {
+  if (isPro()) return true;
+  if (ventasDelMesActual() >= LIMITES_BASICO.ventasPorMes) {
+    mostrarLimitePlan(`Con el plan Básico puedes anotar hasta ${LIMITES_BASICO.ventasPorMes} ventas por mes.`);
+    return false;
+  }
+  return true;
 }
 
 function isInPeriod(fechaStr, periodo) {
@@ -417,6 +478,7 @@ function renderCurrentScreen() {
   if (currentScreen === 'ventas') renderVentas();
   if (currentScreen === 'gastos') renderGastos();
   if (currentScreen === 'resumen') renderResumen();
+  if (currentScreen === 'mi-plan') renderMiPlan();
 }
 
 function renderAll() {
@@ -427,6 +489,43 @@ function renderAll() {
   renderVentas();
   renderGastos();
   renderResumen();
+  renderMiPlan();
+}
+
+/* ============ Render: Mi Plan ============ */
+
+const ESTADO_PLAN_LABEL = {
+  activo: 'Activo',
+  suspendido: 'Suspendido',
+  cancelado: 'Cancelado'
+};
+
+function renderMiPlan() {
+  const badge = document.getElementById('mi-plan-badge');
+  const estadoEl = document.getElementById('mi-plan-estado');
+  const siguientePaso = document.getElementById('mi-plan-siguiente-paso');
+  const btnActivar = document.getElementById('btn-activar-pro');
+  if (!badge) return;
+
+  const modo = getPlanMode();
+  const estado = getEstadoPlan();
+
+  badge.textContent = modo === 'pro' ? 'Pro' : 'Básico';
+  estadoEl.textContent = ESTADO_PLAN_LABEL[estado] || 'Activo';
+
+  if (estado !== 'activo') {
+    siguientePaso.textContent = 'Tu plan no está activo en este momento. Si crees que esto es un error, contacta a soporte.';
+    btnActivar.style.display = 'none';
+    return;
+  }
+
+  if (modo === 'pro') {
+    siguientePaso.textContent = 'Ya tienes SANE Pro. Disfruta de todas las funciones sin límite.';
+    btnActivar.style.display = 'none';
+  } else {
+    siguientePaso.textContent = 'Actívalo cuando quieras: por ahora no tiene ningún costo.';
+    btnActivar.style.display = 'block';
+  }
 }
 
 /* ============ Render: Inicio ============ */
@@ -637,6 +736,8 @@ function closeModal() {
 }
 
 function openProductoModal(id = null) {
+  if (!id && !puedeAgregarProducto()) return;
+
   const form = document.getElementById('form-producto');
   form.reset();
   document.getElementById('producto-id').value = '';
@@ -856,6 +957,7 @@ function actualizarPreviewInsumo() {
 }
 
 function openVentaModal() {
+  if (!puedeAgregarVenta()) return;
   if (data.productos.length === 0) {
     alert('Primero agrega al menos un producto en la pestaña Productos.');
     return;
@@ -957,6 +1059,17 @@ function mensajeErrorAuth(code) {
   return mensajes[code] || 'Ocurrió un error. Intenta de nuevo.';
 }
 
+function estructuraSuscripcionVacia() {
+  return {
+    estado: '',
+    fechaInicio: null,
+    fechaFin: null,
+    renovacionAutomatica: false,
+    proveedorPago: '',
+    idSuscripcion: ''
+  };
+}
+
 async function ensureUserDoc(user) {
   const ref = usuarioRef(user.uid);
   const snap = await getDoc(ref);
@@ -967,8 +1080,26 @@ async function ensureUserDoc(user) {
       plan: 'basico',
       estado: 'activo',
       fechaAlta: serverTimestamp(),
-      fechaActualizacion: serverTimestamp()
+      fechaActualizacion: serverTimestamp(),
+      estadoPlan: 'activo',
+      fechaAltaPlan: serverTimestamp(),
+      fechaActualizacionPlan: serverTimestamp(),
+      suscripcion: estructuraSuscripcionVacia()
     });
+    return;
+  }
+
+  // Cuentas creadas antes de FASE 3: se completan los campos nuevos sin tocar
+  // los que ya existían (nombre, correo, plan, historial, etc.).
+  const actuales = snap.data();
+  const faltantes = {};
+  if (!actuales.plan) faltantes.plan = 'basico';
+  if (!actuales.estadoPlan) faltantes.estadoPlan = 'activo';
+  if (!actuales.fechaAltaPlan) faltantes.fechaAltaPlan = serverTimestamp();
+  if (!actuales.fechaActualizacionPlan) faltantes.fechaActualizacionPlan = serverTimestamp();
+  if (!actuales.suscripcion) faltantes.suscripcion = estructuraSuscripcionVacia();
+  if (Object.keys(faltantes).length > 0) {
+    await setDoc(ref, faltantes, { merge: true });
   }
 }
 
@@ -1534,21 +1665,66 @@ document.addEventListener('DOMContentLoaded', () => {
     renderCosteo();
   });
 
-  /* Interruptor Básico/Pro (solo para desarrollo) */
-  function actualizarPlanDevToggleUI() {
+  /* Mi Plan: activar SANE Pro (sin cobro, solo cambia el plan en Firestore) */
+  document.getElementById('btn-activar-pro').addEventListener('click', async () => {
+    await cambiarPlanPropio('pro');
+  });
+
+  /* Aviso elegante de límite de plan alcanzado */
+  document.getElementById('limite-plan-cerrar').addEventListener('click', () => {
+    document.getElementById('limite-plan-overlay').classList.remove('open');
+  });
+  document.getElementById('limite-plan-conocer').addEventListener('click', () => {
+    document.getElementById('limite-plan-overlay').classList.remove('open');
+    goToScreen('sane-pro');
+  });
+
+  /* Panel administrativo (estructura preliminar, sin permisos reales todavía):
+     por ahora las reglas de Firestore solo permiten leer/escribir la propia
+     cuenta, así que únicamente funciona buscando tu propio correo. */
+  document.getElementById('btn-admin-buscar').addEventListener('click', async () => {
+    const correo = document.getElementById('admin-plan-correo').value.trim().toLowerCase();
+    const mensajeEl = document.getElementById('admin-plan-mensaje');
+    const resultadoEl = document.getElementById('admin-plan-resultado');
+    mensajeEl.textContent = '';
+    resultadoEl.classList.remove('mostrar');
+
+    if (!correo) { mensajeEl.textContent = 'Escribe un correo.'; return; }
+
+    if (correo !== (currentUser.email || '').toLowerCase()) {
+      mensajeEl.textContent = 'Todavía no se pueden administrar otras cuentas: hace falta activar permisos de administrador en una fase futura. Por ahora puedes probar los cambios con tu propia cuenta.';
+      return;
+    }
+
+    document.getElementById('admin-plan-nombre-encontrado').textContent =
+      (data.usuario && data.usuario.nombre) || currentUser.email;
+    actualizarAdminPlanPillsUI();
+    resultadoEl.classList.add('mostrar');
+  });
+
+  function actualizarAdminPlanPillsUI() {
     const modo = getPlanMode();
-    document.querySelectorAll('.plan-dev-btn').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.plan === modo);
+    const estado = getEstadoPlan();
+    const valorActivo = estado !== 'activo' ? estado : modo;
+    document.querySelectorAll('.admin-plan-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.valor === valorActivo);
     });
   }
-  document.querySelectorAll('.plan-dev-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      setPlanMode(btn.dataset.plan);
-      actualizarPlanDevToggleUI();
-      renderCurrentScreen();
+
+  document.querySelectorAll('.admin-plan-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const valor = btn.dataset.valor;
+      const cambios = { fechaActualizacionPlan: serverTimestamp() };
+      if (valor === 'basico' || valor === 'pro') {
+        cambios.plan = valor;
+        cambios.estadoPlan = 'activo';
+      } else {
+        cambios.estadoPlan = valor;
+      }
+      await setDoc(usuarioRef(currentUser.uid), cambios, { merge: true });
+      actualizarAdminPlanPillsUI();
     });
   });
-  actualizarPlanDevToggleUI();
 
   /* Botones hacia la pantalla SANE Pro y de regreso a Inicio */
   document.querySelectorAll('[data-goto-sane-pro]').forEach(btn => {

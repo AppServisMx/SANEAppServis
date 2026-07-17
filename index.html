@@ -116,6 +116,22 @@
   </div>
 </div>
 
+<!-- ===================== LÍMITE DE PLAN ALCANZADO ===================== -->
+<div id="limite-plan-overlay" class="detail-overlay">
+  <div class="detail-dialog">
+    <div class="detail-header">
+      <h3>Has llegado al límite de tu plan</h3>
+    </div>
+    <div class="detail-body">
+      <p id="limite-plan-mensaje"></p>
+    </div>
+    <div class="detail-footer migration-footer">
+      <button type="button" id="limite-plan-cerrar" class="btn-secondary">Cerrar</button>
+      <button type="button" id="limite-plan-conocer" class="btn-primary">Conocer SANE Pro</button>
+    </div>
+  </div>
+</div>
+
 <div class="layout">
 
   <!-- ===================== BARRA LATERAL (equipos de escritorio) ===================== -->
@@ -180,14 +196,8 @@
     <div class="app-topbar-global" id="app-topbar-global">
       <div class="account-bar">
         <span class="account-bar-name" id="account-bar-nombre"></span>
+        <button type="button" class="account-bar-link" data-goto="mi-plan">Mi plan</button>
         <button type="button" id="btn-logout" class="account-bar-logout">Cerrar sesión</button>
-      </div>
-      <div class="plan-dev-toggle-inline">
-        <span class="plan-dev-label">Modo (solo desarrollo)</span>
-        <div class="plan-dev-pills">
-          <button type="button" class="plan-dev-btn" data-plan="basico">Básico</button>
-          <button type="button" class="plan-dev-btn" data-plan="pro">Pro</button>
-        </div>
       </div>
     </div>
     <div class="app-shell">
@@ -403,6 +413,79 @@
         </div>
 
         <p class="sane-pro-note">Muy pronto podrás activar SANE Pro directamente desde aquí.</p>
+      </section>
+
+      <!-- ===================== MI PLAN ===================== -->
+      <section id="screen-mi-plan" class="screen">
+        <header class="section-header">
+          <h2>Mi plan</h2>
+          <p class="section-subtitle">Lo que incluye tu cuenta ahorita</p>
+        </header>
+
+        <div class="mi-plan-card">
+          <div class="mi-plan-actual">
+            <span class="mi-plan-badge" id="mi-plan-badge">Básico</span>
+            <span class="mi-plan-estado" id="mi-plan-estado">Activo</span>
+          </div>
+          <p class="mi-plan-siguiente" id="mi-plan-siguiente-paso"></p>
+          <button type="button" id="btn-activar-pro" class="btn-primary mi-plan-activar">Activar SANE Pro</button>
+        </div>
+
+        <div class="mi-plan-beneficios">
+          <div class="mi-plan-columna">
+            <h3>Básico</h3>
+            <ul>
+              <li>Hasta 15 productos</li>
+              <li>Hasta 50 ventas por mes</li>
+              <li>Costeo rápido</li>
+              <li>Un negocio</li>
+            </ul>
+          </div>
+          <div class="mi-plan-columna mi-plan-columna--pro">
+            <h3>Pro</h3>
+            <ul>
+              <li>Productos ilimitados</li>
+              <li>Ventas ilimitadas</li>
+              <li>Insumos ilimitados</li>
+              <li>Costeo detallado</li>
+              <li>Rendimiento y precio sugerido</li>
+              <li>Estadísticas completas</li>
+              <li>Futuras funciones Pro</li>
+            </ul>
+          </div>
+        </div>
+
+        <button type="button" class="link-btn" data-goto="admin-plan">Panel administrativo (solo desarrollo)</button>
+        <button type="button" class="link-btn sane-pro-back" data-goto-inicio>‹ Volver a Inicio</button>
+      </section>
+
+      <!-- ===================== PANEL ADMINISTRATIVO (estructura preliminar, sin permisos todavía) ===================== -->
+      <section id="screen-admin-plan" class="screen">
+        <header class="section-header">
+          <h2>Panel administrativo</h2>
+          <p class="section-subtitle">Cambiar el plan de una cuenta. Estructura preliminar: por ahora solo funciona con tu propia cuenta.</p>
+        </header>
+
+        <div class="admin-plan-buscador">
+          <label>Correo de la cuenta
+            <input type="email" id="admin-plan-correo" placeholder="correo@ejemplo.com">
+          </label>
+          <button type="button" id="btn-admin-buscar" class="btn-secondary">Buscar</button>
+        </div>
+
+        <p class="hint-text" id="admin-plan-mensaje"></p>
+
+        <div id="admin-plan-resultado" class="admin-plan-resultado">
+          <p class="hint-text">Cuenta: <strong id="admin-plan-nombre-encontrado"></strong></p>
+          <div class="admin-plan-pills">
+            <button type="button" class="admin-plan-btn" data-valor="basico">Básico</button>
+            <button type="button" class="admin-plan-btn" data-valor="pro">Pro</button>
+            <button type="button" class="admin-plan-btn" data-valor="suspendido">Suspendido</button>
+            <button type="button" class="admin-plan-btn" data-valor="cancelado">Cancelado</button>
+          </div>
+        </div>
+
+        <button type="button" class="link-btn sane-pro-back" data-goto="mi-plan">‹ Volver a Mi plan</button>
       </section>
 
       <!-- ===================== NAVEGACIÓN INFERIOR (móvil y tablet) ===================== -->
