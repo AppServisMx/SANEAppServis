@@ -1322,6 +1322,9 @@ onAuthStateChanged(auth, async user => {
 /* ============ Inicialización ============ */
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Cada vez que se entra a la app (login o refresh) siempre arranca en
+  // plan Básico y en la pantalla Inicio, sin importar en qué quedó antes.
+  setDevPlanOverride('basico');
   renderAll();
 
   /* Puerta de acceso: pestañas login / crear cuenta, y enlaces hacia recuperar contraseña */
