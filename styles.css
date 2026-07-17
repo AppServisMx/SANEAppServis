@@ -529,6 +529,25 @@ body.state-auth .auth-gate {
   border-radius: 999px;
 }
 
+.estado-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 999px;
+  margin-right: 6px;
+}
+
+.estado-badge--pendiente {
+  background: var(--color-orange-light);
+  color: var(--color-orange);
+}
+
+.estado-badge--entregado {
+  background: var(--color-mint-light);
+  color: var(--color-mint);
+}
+
 .mi-plan-estado {
   font-size: 13px;
   color: var(--color-text-muted);

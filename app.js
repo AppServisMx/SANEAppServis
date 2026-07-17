@@ -32,11 +32,23 @@ let dataUnsubscribers = [];
 const ICON_PENCIL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20l.9-3.6L16.4 5a1.5 1.5 0 0 1 2.1 0l1.5 1.5a1.5 1.5 0 0 1 0 2.1L8.5 20.1 4 20z"/><path d="M14.5 6.5l3 3"/></svg>';
 
 const ICON_TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16"/><path d="M9 7V4.8c0-.4.4-.8.9-.8h4.2c.5 0 .9.4.9.8V7"/><path d="M6.5 7l.7 12.2c0 .95.8 1.8 1.8 1.8h6c1 0 1.8-.85 1.8-1.8L17.5 7"/><path d="M10 11v6M14 11v6"/></svg>';
+const ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg>';
 
 /* ============ Utilidades generales ============ */
 
 function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+// Folio consecutivo tipo "V-0007": busca el número más alto ya usado con ese
+// prefijo en la lista y le suma 1. Si se borra un folio de en medio, no se repite.
+function siguienteFolio(prefijo, lista) {
+  const maxN = lista.reduce((max, item) => {
+    if (!item.folio || !item.folio.startsWith(prefijo + '-')) return max;
+    const n = parseInt(item.folio.slice(prefijo.length + 1), 10);
+    return isNaN(n) ? max : Math.max(max, n);
+  }, 0);
+  return `${prefijo}-${String(maxN + 1).padStart(4, '0')}`;
 }
 
 function escapeHtml(str) {
@@ -78,15 +90,15 @@ function offsetDateStr(daysAgo) {
 
 /* ============ Datos (en memoria, sincronizados con Firestore) ============ */
 
-let data = { productos: [], costeos: [], ventas: [], gastos: [], insumos: [], costeoDetallado: [], proveedores: [], clientes: [], usuario: null };
+let data = { productos: [], costeos: [], ventas: [], gastos: [], insumos: [], costeoDetallado: [], proveedores: [], clientes: [], pedidos: [], usuario: null };
 
 function vaciarData() {
-  data = { productos: [], costeos: [], ventas: [], gastos: [], insumos: [], costeoDetallado: [], proveedores: [], clientes: [], usuario: null };
+  data = { productos: [], costeos: [], ventas: [], gastos: [], insumos: [], costeoDetallado: [], proveedores: [], clientes: [], pedidos: [], usuario: null };
 }
 
 /* ============ Persistencia en Firestore (usuarios/{uid}/...) ============ */
 
-const COLECCIONES = ['productos', 'insumos', 'costeos', 'costeoDetallado', 'ventas', 'gastos', 'proveedores', 'clientes'];
+const COLECCIONES = ['productos', 'insumos', 'costeos', 'costeoDetallado', 'ventas', 'gastos', 'proveedores', 'clientes', 'pedidos'];
 
 function usuarioRef(uid) {
   return doc(db, 'usuarios', uid);
@@ -123,6 +135,9 @@ function borrarProveedorRemoto(id) { return deleteDoc(documentoRef(currentUser.u
 
 function guardarCliente(c) { return setDoc(documentoRef(currentUser.uid, 'clientes', c.id), c); }
 function borrarClienteRemoto(id) { return deleteDoc(documentoRef(currentUser.uid, 'clientes', id)); }
+
+function guardarPedido(p) { return setDoc(documentoRef(currentUser.uid, 'pedidos', p.id), p); }
+function borrarPedidoRemoto(id) { return deleteDoc(documentoRef(currentUser.uid, 'pedidos', id)); }
 
 /* Escucha en tiempo real las 8 colecciones del usuario: cualquier cambio (hecho desde
    este dispositivo o desde otro) actualiza "data" y vuelve a dibujar la pantalla.
@@ -174,6 +189,10 @@ function getProveedor(id) {
 
 function getCliente(id) {
   return data.clientes.find(c => c.id === id) || null;
+}
+
+function getPedido(id) {
+  return data.pedidos.find(p => p.id === id) || null;
 }
 
 function categoriaDeUnidad(unidad) {
@@ -538,6 +557,7 @@ function renderCurrentScreen() {
   if (currentScreen === 'insumos') renderInsumos();
   if (currentScreen === 'costeo') renderCosteo();
   if (currentScreen === 'ventas') renderVentas();
+  if (currentScreen === 'pedidos') renderPedidos();
   if (currentScreen === 'gastos') renderGastos();
   if (currentScreen === 'proveedores') renderProveedores();
   if (currentScreen === 'clientes') renderClientes();
@@ -552,6 +572,7 @@ function renderAll() {
   renderInsumos();
   renderCosteo();
   renderVentas();
+  renderPedidos();
   renderGastos();
   renderProveedores();
   renderClientes();
@@ -627,18 +648,21 @@ function renderProductos() {
   }
   vacio.style.display = 'none';
 
-  lista.innerHTML = data.productos.map(p => `
+  lista.innerHTML = data.productos.map(p => {
+    const detalle = [p.clave, p.categoria, formatCurrency(p.precioVenta), p.rendimiento].filter(Boolean).join(' · ');
+    return `
     <li class="item-card">
       <div class="item-info">
         <span class="item-title">${escapeHtml(p.nombre)}</span>
-        <span class="item-subtitle">${formatCurrency(p.precioVenta)}</span>
+        <span class="item-subtitle">${escapeHtml(detalle)}</span>
       </div>
       <div class="item-actions">
         <button type="button" class="icon-btn" data-action="editar-producto" data-id="${p.id}" aria-label="Editar">${ICON_PENCIL}</button>
         <button type="button" class="icon-btn" data-action="eliminar-producto" data-id="${p.id}" aria-label="Eliminar">${ICON_TRASH}</button>
       </div>
     </li>
-  `).join('');
+  `;
+  }).join('');
 }
 
 /* ============ Render: Mis Insumos (función Pro) ============ */
@@ -724,6 +748,14 @@ function renderCosteo() {
 
 /* ============ Render: Ventas ============ */
 
+const VIA_LABEL = {
+  mostrador: 'Mostrador',
+  whatsapp: 'WhatsApp',
+  instagram: 'Instagram',
+  facebook: 'Facebook',
+  otro: 'Otro'
+};
+
 function renderVentas() {
   const lista = document.getElementById('lista-ventas');
   const vacio = document.getElementById('ventas-vacio');
@@ -736,17 +768,26 @@ function renderVentas() {
   }
   vacio.style.display = 'none';
 
-  lista.innerHTML = ventasOrdenadas.map(v => `
+  lista.innerHTML = ventasOrdenadas.map(v => {
+    const detalle = [
+      v.folio,
+      formatDate(v.fecha),
+      formatCurrency(v.cantidad * v.precioVentaUnitario),
+      v.clienteNombre,
+      VIA_LABEL[v.via]
+    ].filter(Boolean).join(' · ');
+    return `
     <li class="item-card">
       <div class="item-info">
         <span class="item-title">${escapeHtml(v.productoNombre)} × ${v.cantidad}</span>
-        <span class="item-subtitle">${formatDate(v.fecha)} · ${formatCurrency(v.cantidad * v.precioVentaUnitario)}</span>
+        <span class="item-subtitle">${escapeHtml(detalle)}</span>
       </div>
       <div class="item-actions">
         <button type="button" class="icon-btn" data-action="eliminar-venta" data-id="${v.id}" aria-label="Eliminar">${ICON_TRASH}</button>
       </div>
     </li>
-  `).join('');
+  `;
+  }).join('');
 }
 
 /* ============ Render: Gastos ============ */
@@ -854,6 +895,49 @@ function renderClientes() {
   }).join('');
 }
 
+/* ============ Render: Pedidos ============ */
+
+const ESTADO_PEDIDO_LABEL = { pendiente: 'Pendiente', entregado: 'Entregado' };
+
+function renderPedidos() {
+  const lista = document.getElementById('lista-pedidos');
+  const vacio = document.getElementById('pedidos-vacio');
+
+  if (data.pedidos.length === 0) {
+    lista.innerHTML = '';
+    vacio.style.display = 'block';
+    return;
+  }
+  vacio.style.display = 'none';
+
+  const pedidosOrdenados = [...data.pedidos].sort((a, b) => (a.fechaEntrega || '').localeCompare(b.fechaEntrega || ''));
+
+  lista.innerHTML = pedidosOrdenados.map(p => {
+    const saldo = (Number(p.total) || 0) - (Number(p.anticipo) || 0);
+    const detalle = [
+      p.folio,
+      p.clienteNombre,
+      `Entrega: ${formatDate(p.fechaEntrega)}`,
+      `Saldo: ${formatCurrency(saldo)}`
+    ].filter(Boolean).join(' · ');
+    const badgeClase = p.estado === 'entregado' ? 'estado-badge--entregado' : 'estado-badge--pendiente';
+    const badgeTexto = ESTADO_PEDIDO_LABEL[p.estado] || 'Pendiente';
+    return `
+    <li class="item-card">
+      <div class="item-info">
+        <span class="item-title">${escapeHtml(p.descripcion)}</span>
+        <span class="item-subtitle"><span class="estado-badge ${badgeClase}">${badgeTexto}</span>${escapeHtml(detalle)}</span>
+      </div>
+      <div class="item-actions">
+        <button type="button" class="icon-btn" data-action="toggle-estado-pedido" data-id="${p.id}" aria-label="Cambiar estado">${ICON_CHECK}</button>
+        <button type="button" class="icon-btn" data-action="editar-pedido" data-id="${p.id}" aria-label="Editar">${ICON_PENCIL}</button>
+        <button type="button" class="icon-btn" data-action="eliminar-pedido" data-id="${p.id}" aria-label="Eliminar">${ICON_TRASH}</button>
+      </div>
+    </li>
+  `;
+  }).join('');
+}
+
 /* ============ Render: Resumen ============ */
 
 function renderResumen() {
@@ -889,10 +973,27 @@ function openProductoModal(id = null) {
     if (p) {
       document.getElementById('producto-id').value = p.id;
       document.getElementById('producto-nombre').value = p.nombre;
+      document.getElementById('producto-clave').value = p.clave || '';
+      document.getElementById('producto-categoria').value = p.categoria || '';
+      document.getElementById('producto-rendimiento').value = p.rendimiento || '';
       document.getElementById('producto-precio').value = p.precioVenta;
     }
   }
+  actualizarPrecioSugerido(id);
   openModal('producto');
+}
+
+// Referencia informativa (no se guarda): 3 veces el costo de producción, tal
+// como lo calculas tú mismo en tu lista de precios. El precio que de verdad
+// se usa en Ventas/Resumen sigue siendo "producto-precio", editable a mano.
+function actualizarPrecioSugerido(productoId) {
+  const hint = document.getElementById('producto-precio-sugerido');
+  const costo = productoId ? getCostoUnitarioProducto(productoId) : 0;
+  if (!costo) {
+    hint.textContent = '';
+    return;
+  }
+  hint.textContent = `Precio sugerido (3x costo de ${formatCurrency(costo)}): ${formatCurrency(costo * 3)}`;
 }
 
 function openCosteoModal(productoId = null) {
@@ -1111,6 +1212,13 @@ function openVentaModal() {
   select.innerHTML = data.productos.map(p => `<option value="${p.id}">${escapeHtml(p.nombre)}</option>`).join('');
   document.getElementById('venta-cantidad').value = 1;
   document.getElementById('venta-fecha').value = todayStr();
+  document.getElementById('venta-via').value = '';
+
+  const clienteSelect = document.getElementById('venta-cliente-select');
+  clienteSelect.innerHTML = '<option value="">Sin especificar</option>' +
+    data.clientes.map(c => `<option value="${c.id}">${escapeHtml([c.nombre, c.apellido].filter(Boolean).join(' '))}</option>`).join('');
+
+  document.getElementById('venta-folio-preview').textContent = `Folio: ${siguienteFolio('V', data.ventas)}`;
   actualizarPreviewVenta();
   openModal('venta');
 }
@@ -1140,6 +1248,39 @@ function openGastoModal() {
   document.getElementById('gasto-fecha').value = todayStr();
   document.getElementById('gasto-categoria').value = 'otros';
   openModal('gasto');
+}
+
+function actualizarPreviewPedido() {
+  const total = parseFloat(document.getElementById('pedido-total').value) || 0;
+  const anticipo = parseFloat(document.getElementById('pedido-anticipo').value) || 0;
+  document.getElementById('pedido-saldo-preview').textContent = formatCurrency(total - anticipo);
+}
+
+function openPedidoModal(id = null) {
+  const form = document.getElementById('form-pedido');
+  form.reset();
+  document.getElementById('pedido-id').value = '';
+
+  const clienteSelect = document.getElementById('pedido-cliente-select');
+  clienteSelect.innerHTML = '<option value="">Sin especificar</option>' +
+    data.clientes.map(c => `<option value="${c.id}">${escapeHtml([c.nombre, c.apellido].filter(Boolean).join(' '))}</option>`).join('');
+
+  if (id) {
+    const p = getPedido(id);
+    if (p) {
+      document.getElementById('pedido-id').value = p.id;
+      document.getElementById('pedido-descripcion').value = p.descripcion;
+      clienteSelect.value = p.clienteId || '';
+      document.getElementById('pedido-fecha-entrega').value = p.fechaEntrega;
+      document.getElementById('pedido-total').value = p.total;
+      document.getElementById('pedido-anticipo').value = p.anticipo;
+      document.getElementById('pedido-folio-preview').textContent = `Folio: ${p.folio}`;
+    }
+  } else {
+    document.getElementById('pedido-folio-preview').textContent = `Folio: ${siguienteFolio('P', data.pedidos)}`;
+  }
+  actualizarPreviewPedido();
+  openModal('pedido');
 }
 
 function openProveedorModal(id = null) {
@@ -1225,6 +1366,21 @@ async function eliminarGasto(id) {
   borrarGastoRemoto(id);
   renderGastos();
   renderInicio();
+}
+
+async function eliminarPedido(id) {
+  if (!await mostrarConfirmacion('¿Seguro que quieres borrar este pedido?')) return;
+  data.pedidos = data.pedidos.filter(p => p.id !== id);
+  borrarPedidoRemoto(id);
+  renderPedidos();
+}
+
+function toggleEstadoPedido(id) {
+  const p = getPedido(id);
+  if (!p) return;
+  p.estado = p.estado === 'entregado' ? 'pendiente' : 'entregado';
+  guardarPedido(p);
+  renderPedidos();
 }
 
 async function eliminarProveedor(id) {
@@ -1703,6 +1859,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (action === 'eliminar-proveedor') eliminarProveedor(id);
     if (action === 'editar-cliente') openClienteModal(id);
     if (action === 'eliminar-cliente') eliminarCliente(id);
+    if (action === 'editar-pedido') openPedidoModal(id);
+    if (action === 'eliminar-pedido') eliminarPedido(id);
+    if (action === 'toggle-estado-pedido') toggleEstadoPedido(id);
   });
 
   /* Formulario: Producto */
@@ -1710,16 +1869,22 @@ document.addEventListener('DOMContentLoaded', () => {
     e.preventDefault();
     const id = document.getElementById('producto-id').value;
     const nombre = document.getElementById('producto-nombre').value.trim();
+    const clave = document.getElementById('producto-clave').value.trim();
+    const categoria = document.getElementById('producto-categoria').value.trim();
+    const rendimiento = document.getElementById('producto-rendimiento').value.trim();
     const precioVenta = parseFloat(document.getElementById('producto-precio').value);
     if (!nombre || isNaN(precioVenta) || precioVenta < 0) return;
 
     if (id) {
       const p = data.productos.find(p => p.id === id);
       p.nombre = nombre;
+      p.clave = clave;
+      p.categoria = categoria;
+      p.rendimiento = rendimiento;
       p.precioVenta = precioVenta;
       guardarProducto(p);
     } else {
-      const nuevo = { id: uid(), nombre, precioVenta };
+      const nuevo = { id: uid(), nombre, clave, categoria, rendimiento, precioVenta };
       data.productos.push(nuevo);
       guardarProducto(nuevo);
     }
@@ -1771,21 +1936,74 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!producto || !cantidad || cantidad < 1 || !fecha) return;
 
     const costoUnitario = getCostoUnitarioProducto(productoId);
+    const via = document.getElementById('venta-via').value;
+    const clienteId = document.getElementById('venta-cliente-select').value;
+    const cliente = clienteId ? getCliente(clienteId) : null;
 
     const nuevaVenta = {
       id: uid(),
+      folio: siguienteFolio('V', data.ventas),
       productoId,
       productoNombre: producto.nombre,
       cantidad,
       precioVentaUnitario: producto.precioVenta,
       costoTotalUnitario: costoUnitario,
-      fecha
+      fecha,
+      via,
+      clienteId,
+      clienteNombre: cliente ? [cliente.nombre, cliente.apellido].filter(Boolean).join(' ') : ''
     };
     data.ventas.push(nuevaVenta);
     guardarVenta(nuevaVenta);
     closeModal();
     renderVentas();
     renderInicio();
+  });
+
+  /* Formulario: Pedido */
+  document.getElementById('btn-add-pedido').addEventListener('click', () => openPedidoModal());
+  ['pedido-total', 'pedido-anticipo'].forEach(id => {
+    document.getElementById(id).addEventListener('input', actualizarPreviewPedido);
+  });
+  document.getElementById('form-pedido').addEventListener('submit', e => {
+    e.preventDefault();
+    const id = document.getElementById('pedido-id').value;
+    const descripcion = document.getElementById('pedido-descripcion').value.trim();
+    const clienteId = document.getElementById('pedido-cliente-select').value;
+    const cliente = clienteId ? getCliente(clienteId) : null;
+    const fechaEntrega = document.getElementById('pedido-fecha-entrega').value;
+    const total = parseFloat(document.getElementById('pedido-total').value);
+    const anticipo = parseFloat(document.getElementById('pedido-anticipo').value) || 0;
+    if (!descripcion || !fechaEntrega || isNaN(total) || total < 0) return;
+
+    const clienteNombre = cliente ? [cliente.nombre, cliente.apellido].filter(Boolean).join(' ') : '';
+
+    if (id) {
+      const p = getPedido(id);
+      p.descripcion = descripcion;
+      p.clienteId = clienteId;
+      p.clienteNombre = clienteNombre;
+      p.fechaEntrega = fechaEntrega;
+      p.total = total;
+      p.anticipo = anticipo;
+      guardarPedido(p);
+    } else {
+      const nuevo = {
+        id: uid(),
+        folio: siguienteFolio('P', data.pedidos),
+        descripcion,
+        clienteId,
+        clienteNombre,
+        fechaEntrega,
+        total,
+        anticipo,
+        estado: 'pendiente'
+      };
+      data.pedidos.push(nuevo);
+      guardarPedido(nuevo);
+    }
+    closeModal();
+    renderPedidos();
   });
 
   /* Formulario: Gasto */

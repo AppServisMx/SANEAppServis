@@ -208,6 +208,10 @@
         <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="7" rx="7" ry="3"/><path d="M5 7v5c0 1.7 3.1 3 7 3s7-1.3 7-3V7"/><path d="M5 12v5c0 1.7 3.1 3 7 3s7-1.3 7-3v-5"/></svg>
         <span class="sidebar-link-label">Ventas</span>
       </button>
+      <button type="button" class="nav-btn sidebar-link" data-screen="pedidos">
+        <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/><path d="M8.5 14.5l2 2 4.5-4.5"/></svg>
+        <span class="sidebar-link-label">Pedidos</span>
+      </button>
       <button type="button" class="nav-btn sidebar-link" data-screen="gastos">
         <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12a1 1 0 0 1 1 1v16l-2-1.2-2 1.2-2-1.2-2 1.2-2-1.2-2 1.2V4a1 1 0 0 1 1-1z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
         <span class="sidebar-link-label">Gastos</span>
@@ -364,6 +368,20 @@
         </button>
         <ul id="lista-ventas" class="item-list"></ul>
         <p id="ventas-vacio" class="empty-hint">Aún no has anotado ninguna venta. Toca "Vendí un producto" para empezar.</p>
+      </section>
+
+      <!-- ===================== PEDIDOS ===================== -->
+      <section id="screen-pedidos" class="screen">
+        <header class="section-header">
+          <h2>Pedidos</h2>
+          <p class="section-subtitle">Encargos para entregar después</p>
+        </header>
+        <button type="button" id="btn-add-pedido" class="add-btn">
+          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          Agregar pedido
+        </button>
+        <ul id="lista-pedidos" class="item-list"></ul>
+        <p id="pedidos-vacio" class="empty-hint">Aún no tienes pedidos pendientes. Toca "Agregar pedido" para empezar.</p>
       </section>
 
       <!-- ===================== GASTOS ===================== -->
@@ -607,9 +625,19 @@
             <label>¿Cómo se llama?
               <input type="text" id="producto-nombre" required placeholder="Ej. Pastel de chocolate">
             </label>
+            <label>Clave (opcional)
+              <input type="text" id="producto-clave" placeholder="Ej. PT-01">
+            </label>
+            <label>Categoría (opcional)
+              <input type="text" id="producto-categoria" placeholder="Ej. Pasteles">
+            </label>
+            <label>Rendimiento (opcional)
+              <input type="text" id="producto-rendimiento" placeholder="Ej. 8 piezas">
+            </label>
             <label>¿En cuánto lo vendes?
               <input type="number" id="producto-precio" required min="0" step="0.01" placeholder="0.00">
             </label>
+            <p class="hint-text" id="producto-precio-sugerido"></p>
           </div>
           <div class="modal-actions">
             <button type="button" class="btn-secondary" data-close-modal>Cancelar</button>
@@ -658,6 +686,7 @@
             </button>
           </div>
           <div class="modal-body">
+            <p class="hint-text" id="venta-folio-preview"></p>
             <label>¿Qué vendiste?
               <select id="venta-producto-select" required></select>
             </label>
@@ -668,8 +697,60 @@
             <label>¿Qué día fue?
               <input type="date" id="venta-fecha" required>
             </label>
+            <label>¿Por dónde vendiste? (opcional)
+              <select id="venta-via">
+                <option value="" selected>Sin especificar</option>
+                <option value="mostrador">Mostrador / en persona</option>
+                <option value="whatsapp">WhatsApp</option>
+                <option value="instagram">Instagram</option>
+                <option value="facebook">Facebook</option>
+                <option value="otro">Otro</option>
+              </select>
+            </label>
+            <label>¿A quién le vendiste? (opcional)
+              <select id="venta-cliente-select">
+                <option value="">Sin especificar</option>
+              </select>
+            </label>
             <div class="modal-total">
               Vas a recibir: <strong id="venta-ingreso-preview">$0.00</strong>
+            </div>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn-secondary" data-close-modal>Cancelar</button>
+            <button type="submit" class="btn-primary">Guardar</button>
+          </div>
+        </form>
+
+        <form id="form-pedido" class="modal-form" data-modal="pedido">
+          <div class="modal-header">
+            <h3>Pedido</h3>
+            <button type="button" class="modal-close-x" data-close-modal aria-label="Cerrar">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="pedido-id">
+            <p class="hint-text" id="pedido-folio-preview"></p>
+            <label>¿Qué encargaron?
+              <input type="text" id="pedido-descripcion" required placeholder="Ej. Pastel de 3 leches para XV años">
+            </label>
+            <label>¿A quién? (opcional)
+              <select id="pedido-cliente-select">
+                <option value="">Sin especificar</option>
+              </select>
+            </label>
+            <label>¿Cuándo se entrega?
+              <input type="date" id="pedido-fecha-entrega" required>
+            </label>
+            <label>¿Cuánto es el total?
+              <input type="number" id="pedido-total" required min="0" step="0.01" placeholder="0.00">
+            </label>
+            <label>¿Cuánto de anticipo? (opcional)
+              <input type="number" id="pedido-anticipo" min="0" step="0.01" placeholder="0.00">
+            </label>
+            <div class="modal-total">
+              Saldo pendiente: <strong id="pedido-saldo-preview">$0.00</strong>
             </div>
           </div>
           <div class="modal-actions">
