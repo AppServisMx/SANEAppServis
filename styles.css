@@ -155,12 +155,7 @@ body.state-app .layout {
   color: #fff;
 }
 
-.admin-plan-dev-link {
-  font-size: 11px;
-  white-space: nowrap;
-}
-
-/* ---------- Barra de cuenta (nombre + Mi plan + cerrar sesión) ---------- */
+/* ---------- Barra de cuenta (Mi plan + cerrar sesión) ---------- */
 
 .account-bar {
   display: flex;
@@ -168,14 +163,6 @@ body.state-app .layout {
   gap: 10px;
   min-width: 0;
   flex-wrap: wrap;
-}
-
-.account-bar-name {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-text-muted);
-  overflow-wrap: break-word;
-  min-width: 0;
 }
 
 .account-bar-link {
@@ -1270,6 +1257,11 @@ body.state-auth .auth-gate {
 }
 
 .sidebar-link.active {
+  background: var(--color-violet-light);
+  color: var(--color-violet-dark);
+}
+
+.sidebar.plan-basico .sidebar-link--pro {
   background: var(--color-violet-light);
   color: var(--color-violet-dark);
 }

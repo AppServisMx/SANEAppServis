@@ -292,6 +292,46 @@ function mostrarLimitePlan(mensaje) {
   document.getElementById('limite-plan-overlay').classList.add('open');
 }
 
+/* ---- Diálogos propios de SANE (reemplazan confirm()/alert() del navegador) ---- */
+
+let _confirmResolver = null;
+let _avisoResolver = null;
+
+function mostrarConfirmacion(mensaje, opciones = {}) {
+  return new Promise(resolve => {
+    _confirmResolver = resolve;
+    document.getElementById('confirm-titulo').textContent = opciones.titulo || '¿Estás seguro?';
+    document.getElementById('confirm-mensaje').textContent = mensaje;
+    document.getElementById('confirm-aceptar').textContent = opciones.textoAceptar || 'Aceptar';
+    document.getElementById('confirm-overlay').classList.add('open');
+  });
+}
+
+function cerrarConfirmacion(resultado) {
+  document.getElementById('confirm-overlay').classList.remove('open');
+  if (_confirmResolver) {
+    _confirmResolver(resultado);
+    _confirmResolver = null;
+  }
+}
+
+function mostrarAviso(mensaje, titulo) {
+  return new Promise(resolve => {
+    _avisoResolver = resolve;
+    document.getElementById('aviso-titulo').textContent = titulo || 'Aviso';
+    document.getElementById('aviso-mensaje').textContent = mensaje;
+    document.getElementById('aviso-overlay').classList.add('open');
+  });
+}
+
+function cerrarAviso() {
+  document.getElementById('aviso-overlay').classList.remove('open');
+  if (_avisoResolver) {
+    _avisoResolver();
+    _avisoResolver = null;
+  }
+}
+
 // Antes de crear un producto o venta nuevos, confirma que el plan Básico no haya
 // llegado a su tope; si ya llegó, muestra el aviso elegante y detiene la acción.
 // Mientras los límites sigan "pendientes de definir" (null), nunca bloquea.
@@ -498,6 +538,7 @@ function renderCurrentScreen() {
   if (currentScreen === 'gastos') renderGastos();
   if (currentScreen === 'resumen') renderResumen();
   if (currentScreen === 'mi-plan') renderMiPlan();
+  actualizarSidebarProShading();
 }
 
 function renderAll() {
@@ -509,6 +550,12 @@ function renderAll() {
   renderGastos();
   renderResumen();
   renderMiPlan();
+  actualizarSidebarProShading();
+}
+
+function actualizarSidebarProShading() {
+  const sidebar = document.getElementById('sidebar');
+  if (sidebar) sidebar.classList.toggle('plan-basico', !isPro());
 }
 
 /* ============ Render: Mi Plan ============ */
@@ -774,7 +821,7 @@ function openProductoModal(id = null) {
 
 function openCosteoModal(productoId = null) {
   if (data.productos.length === 0) {
-    alert('Primero agrega al menos un producto en la pestaña Productos.');
+    mostrarAviso('Primero agrega al menos un producto en la pestaña Productos.');
     return;
   }
   const select = document.getElementById('costeo-producto-select');
@@ -978,7 +1025,7 @@ function actualizarPreviewInsumo() {
 function openVentaModal() {
   if (!puedeAgregarVenta()) return;
   if (data.productos.length === 0) {
-    alert('Primero agrega al menos un producto en la pestaña Productos.');
+    mostrarAviso('Primero agrega al menos un producto en la pestaña Productos.');
     return;
   }
   const select = document.getElementById('venta-producto-select');
@@ -1018,8 +1065,8 @@ function openGastoModal() {
 
 /* ============ Acciones: eliminar ============ */
 
-function eliminarProducto(id) {
-  if (!confirm('¿Seguro que quieres borrar este producto? No podrás recuperarlo.')) return;
+async function eliminarProducto(id) {
+  if (!await mostrarConfirmacion('¿Seguro que quieres borrar este producto? No podrás recuperarlo.')) return;
   const teniaCosteo = data.costeos.some(c => c.productoId === id);
   const teniaCosteoDetallado = data.costeoDetallado.some(c => c.productoId === id);
   data.productos = data.productos.filter(p => p.id !== id);
@@ -1032,8 +1079,8 @@ function eliminarProducto(id) {
   renderCosteo();
 }
 
-function eliminarInsumo(id) {
-  if (!confirm('¿Seguro que quieres borrar este insumo? No podrás recuperarlo.')) return;
+async function eliminarInsumo(id) {
+  if (!await mostrarConfirmacion('¿Seguro que quieres borrar este insumo? No podrás recuperarlo.')) return;
   data.insumos = data.insumos.filter(i => i.id !== id);
   borrarInsumoRemoto(id);
   data.costeoDetallado.forEach(cd => {
@@ -1045,16 +1092,16 @@ function eliminarInsumo(id) {
   renderCosteo();
 }
 
-function eliminarVenta(id) {
-  if (!confirm('¿Seguro que quieres borrar esta venta?')) return;
+async function eliminarVenta(id) {
+  if (!await mostrarConfirmacion('¿Seguro que quieres borrar esta venta?')) return;
   data.ventas = data.ventas.filter(v => v.id !== id);
   borrarVentaRemoto(id);
   renderVentas();
   renderInicio();
 }
 
-function eliminarGasto(id) {
-  if (!confirm('¿Seguro que quieres borrar este gasto?')) return;
+async function eliminarGasto(id) {
+  if (!await mostrarConfirmacion('¿Seguro que quieres borrar este gasto?')) return;
   data.gastos = data.gastos.filter(g => g.id !== id);
   borrarGastoRemoto(id);
   renderGastos();
@@ -1123,7 +1170,9 @@ async function ensureUserDoc(user) {
 }
 
 function actualizarAccountBarUI(user) {
-  document.getElementById('account-bar-nombre').textContent = user.displayName || user.email || '';
+  const nombre = (user.displayName || (data.usuario && data.usuario.nombre) || '').trim();
+  const saludo = document.getElementById('topbar-saludo');
+  if (saludo) saludo.textContent = nombre ? `¡Hola, ${nombre}!` : '¡Hola!';
 }
 
 /* ============ Migración de datos guardados en este dispositivo antes de tener cuenta ============ */
@@ -1355,8 +1404,8 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   /* Cerrar sesión */
-  document.getElementById('btn-logout').addEventListener('click', () => {
-    if (!confirm('¿Seguro que quieres cerrar sesión?')) return;
+  document.getElementById('btn-logout').addEventListener('click', async () => {
+    if (!await mostrarConfirmacion('¿Seguro que quieres cerrar sesión?')) return;
     signOut(auth);
   });
 
@@ -1700,6 +1749,11 @@ document.addEventListener('DOMContentLoaded', () => {
     goToScreen('sane-pro');
   });
 
+  /* Diálogos propios de confirmación y aviso */
+  document.getElementById('confirm-cancelar').addEventListener('click', () => cerrarConfirmacion(false));
+  document.getElementById('confirm-aceptar').addEventListener('click', () => cerrarConfirmacion(true));
+  document.getElementById('aviso-cerrar').addEventListener('click', () => cerrarAviso());
+
   /* Interruptor Básico/Pro de desarrollo: solo para pruebas, separado del
      plan real guardado en Firestore (no escribe nada en la nube). */
   function actualizarPlanDevToggleUI() {
@@ -1774,7 +1828,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* Borrar todos los datos y empezar desde cero */
   document.getElementById('btn-reset-demo').addEventListener('click', async () => {
-    if (!confirm('¿Seguro que quieres borrar todos tus datos y empezar desde cero? No podrás recuperarlos.')) return;
+    if (!await mostrarConfirmacion('¿Seguro que quieres borrar todos tus datos y empezar desde cero? No podrás recuperarlos.')) return;
     const batch = writeBatch(db);
     data.productos.forEach(p => batch.delete(documentoRef(currentUser.uid, 'productos', p.id)));
     data.insumos.forEach(i => batch.delete(documentoRef(currentUser.uid, 'insumos', i.id)));
