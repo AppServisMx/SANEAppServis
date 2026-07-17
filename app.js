@@ -123,33 +123,22 @@ function borrarGastoRemoto(id) { return deleteDoc(documentoRef(currentUser.uid, 
    Así se logra la sincronización automática, sin botón "Guardar". */
 function attachDataListeners(uid) {
   detachDataListeners();
-  const primerasCargas = COLECCIONES.map(nombre => new Promise(resolve => {
-    let yaResolvio = false;
+  COLECCIONES.forEach(nombre => {
     const unsub = onSnapshot(coleccionRef(uid, nombre), snap => {
       data[nombre] = snap.docs.map(d => d.data());
       renderAll();
-      if (!yaResolvio) { yaResolvio = true; resolve(); }
     });
     dataUnsubscribers.push(unsub);
-  }));
+  });
 
   // Documento del propio usuario (nombre, correo, plan, estadoPlan, suscripción):
   // se escucha en tiempo real para que un cambio de plan (desde Mi Plan, el panel
   // administrativo, o desde otro dispositivo) se refleje aquí automáticamente.
-  const primeraCargaUsuario = new Promise(resolve => {
-    let yaResolvio = false;
-    const unsub = onSnapshot(usuarioRef(uid), snap => {
-      data.usuario = snap.exists() ? snap.data() : null;
-      renderAll();
-      if (!yaResolvio) { yaResolvio = true; resolve(); }
-    });
-    dataUnsubscribers.push(unsub);
+  const unsub = onSnapshot(usuarioRef(uid), snap => {
+    data.usuario = snap.exists() ? snap.data() : null;
+    renderAll();
   });
-
-  document.getElementById('data-loading-overlay').classList.add('open');
-  Promise.all([...primerasCargas, primeraCargaUsuario]).then(() => {
-    document.getElementById('data-loading-overlay').classList.remove('open');
-  });
+  dataUnsubscribers.push(unsub);
 }
 
 function detachDataListeners() {

@@ -492,17 +492,6 @@ body.state-auth .auth-gate {
   opacity: 0.8;
 }
 
-/* ---------- Pantalla de carga de datos (justo después de iniciar sesión) ---------- */
-
-.data-loading-dialog {
-  align-items: center;
-  padding: 40px 24px;
-  gap: 14px;
-  text-align: center;
-  color: var(--color-text-muted);
-  font-size: 14px;
-}
-
 /* ---------- Modal de migración de datos locales ---------- */
 
 .migration-footer {
@@ -1279,12 +1268,13 @@ body.state-auth .auth-gate {
 }
 
 .sidebar.plan-basico .sidebar-link--pro {
-  background: var(--color-pink-light);
-  color: var(--color-violet-dark);
+  background: var(--color-violet);
+  color: #fff;
 }
 
 .sidebar.plan-basico .sidebar-link--pro.active {
   background: var(--color-violet-light);
+  color: var(--color-violet-dark);
 }
 
 .sidebar-icon {
