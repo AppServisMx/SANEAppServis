@@ -1076,6 +1076,10 @@ function reproducirBienvenida() {
    La animación de bienvenida SOLO se reproduce cuando "mostrarBienvenidaAlEntrar"
    fue activada por un login/registro real (ver los formularios más abajo);
    nunca al cargar la página ni al restaurar una sesión existente. */
+// Límite de seguridad: pase lo que pase (un error, un navegador donde algo no
+// se dispare como se espera), nunca se queda la pantalla trabada más de esto.
+const BIENVENIDA_LIMITE_MS = 4000;
+
 onAuthStateChanged(auth, async user => {
   if (user) {
     currentUser = user;
@@ -1090,7 +1094,17 @@ onAuthStateChanged(auth, async user => {
     }
     attachDataListeners(user.uid);
 
-    if (debeMostrarBienvenida) await reproducirBienvenida();
+    if (debeMostrarBienvenida) {
+      try {
+        await Promise.race([
+          reproducirBienvenida(),
+          new Promise(resolve => setTimeout(resolve, BIENVENIDA_LIMITE_MS))
+        ]);
+      } catch (e) {
+        // Si algo truena en la animación, entrar de todos modos.
+      }
+      document.getElementById('welcome-overlay').classList.remove('open');
+    }
 
     document.body.classList.remove('state-loading', 'state-auth');
     document.body.classList.add('state-app');

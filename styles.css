@@ -201,24 +201,113 @@ body.state-loading .session-loading-overlay {
   to { transform: rotate(360deg); }
 }
 
-.splash-logo {
-  width: 120px;
-  height: 120px;
-  animation: dibujar-logo 1.7s ease-out forwards;
+/* ---------- Animación de bienvenida (solo tras registro/login correcto) ---------- */
+
+.welcome-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  background: var(--color-bg);
+  padding: 24px;
+}
+
+.welcome-overlay.open {
+  display: flex;
+}
+
+.welcome-logo {
+  width: 130px;
+  height: 130px;
+  max-width: 32vw;
+  max-height: 32vw;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-image: linear-gradient(to top, #000 0%, #000 42%, transparent 58%, transparent 100%);
+  mask-image: linear-gradient(to top, #000 0%, #000 42%, transparent 58%, transparent 100%);
+  -webkit-mask-size: 100% 250%;
+  mask-size: 100% 250%;
+  -webkit-mask-position: 0 0%;
+  mask-position: 0 0%;
+}
+
+.welcome-logo.dibujando {
+  animation: dibujar-logo 1.4s cubic-bezier(0.32, 0, 0.2, 1) forwards;
+}
+
+/* Fija el resultado final del dibujo con una propiedad normal (no una animación),
+   para que siga visible aunque después se agregue la clase "respirando": dos
+   clases que definieran cada una su propio "animation" se pisarían entre sí. */
+.welcome-logo.dibujado {
+  -webkit-mask-position: 0 100%;
+  mask-position: 0 100%;
+}
+
+.welcome-logo.respirando {
+  animation: respirar-logo 0.7s ease-in-out;
+}
+
+/* Respaldo: si el navegador no soporta bien la máscara CSS, el logo se
+   muestra completo (con un fundido simple) en vez de quedar invisible. */
+@supports not ((mask-image: linear-gradient(#000, #000)) or (-webkit-mask-image: linear-gradient(#000, #000))) {
+  .welcome-logo {
+    opacity: 0;
+    transition: opacity 0.8s ease-out;
+  }
+  .welcome-logo.dibujando,
+  .welcome-logo.dibujado {
+    opacity: 1;
+  }
 }
 
 @keyframes dibujar-logo {
-  from { clip-path: inset(100% 0 0 0); }
-  to { clip-path: inset(0 0 0 0); }
+  from { -webkit-mask-position: 0 0%; mask-position: 0 0%; }
+  to { -webkit-mask-position: 0 100%; mask-position: 0 100%; }
 }
 
-.splash-hint {
+@keyframes respirar-logo {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.045); }
+}
+
+.welcome-text {
+  text-align: center;
   opacity: 0;
-  animation: aparecer-texto 0.4s ease-out 1.5s forwards;
+  transition: opacity 0.6s ease-out;
 }
 
-@keyframes aparecer-texto {
-  to { opacity: 1; }
+.welcome-text.mostrar {
+  opacity: 1;
+}
+
+.welcome-text-name {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--color-violet-dark);
+  letter-spacing: 0.5px;
+}
+
+.welcome-text-tagline {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+/* Movimiento reducido: se ve el logo completo de inmediato, sin la animación larga. */
+@media (prefers-reduced-motion: reduce) {
+  .welcome-logo.dibujando,
+  .welcome-logo.respirando {
+    animation: none;
+    -webkit-mask-position: 0 100%;
+    mask-position: 0 100%;
+  }
+  .welcome-text {
+    transition: none;
+  }
 }
 
 /* ---------- Puerta de acceso: iniciar sesión / crear cuenta / recuperar contraseña ---------- */
