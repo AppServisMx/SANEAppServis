@@ -1273,7 +1273,7 @@ body.state-auth .auth-gate {
 }
 
 .sidebar.plan-basico .sidebar-link--pro.active {
-  color: var(--color-violet-light);
+  color: var(--color-yellow);
 }
 
 .sidebar-icon {
