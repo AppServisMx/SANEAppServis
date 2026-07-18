@@ -1427,6 +1427,13 @@ body.state-auth .auth-gate {
   color: var(--color-violet-dark);
 }
 
+/* Inicio y Resumen se ven igual que los encabezados de grupo (Producción/
+   Ventas/Negocio): mismo tamaño, mismo color, sin caja de "activo" ni
+   flecha — la única diferencia es que no despliegan nada. */
+.sidebar-nav .sidebar-link--top.active {
+  background: none;
+}
+
 .sidebar.plan-basico .sidebar-link--pro {
   background: linear-gradient(135deg, var(--color-violet), #B089F4);
   color: #fff;
