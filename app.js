@@ -615,11 +615,15 @@ function setGrupoColapsado(nombre, colapsado) {
 }
 
 // Al entrar a una pantalla que vive dentro de un grupo, ese grupo se abre
-// solo, para que siempre se vea resaltada la opción activa.
+// solo, para que siempre se vea resaltada la opción activa. Cualquier otro
+// grupo que haya quedado abierto se cierra (incluyendo el caso de Inicio o
+// Resumen, donde ningún grupo debe quedar expandido).
 function expandirGrupoDeScreen(screen) {
   const boton = document.querySelector(`.nav-btn[data-screen="${screen}"]`);
-  const grupo = boton && boton.closest('.sidebar-group');
-  if (grupo) setGrupoColapsado(grupo.dataset.grupo, false);
+  const grupoActivo = boton && boton.closest('.sidebar-group');
+  document.querySelectorAll('.sidebar-group').forEach(grupo => {
+    setGrupoColapsado(grupo.dataset.grupo, grupo !== grupoActivo);
+  });
 }
 
 function goToScreen(screen) {
