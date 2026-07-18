@@ -1340,12 +1340,22 @@ body.state-auth .auth-gate {
   background: none;
   border-radius: 12px;
   padding: 11px 12px;
-  font-size: 12.5px;
-  font-weight: 800;
+  font-size: 14px;
+  font-weight: 600;
   color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
   cursor: pointer;
+}
+
+.sidebar-group-header:hover {
+  background: var(--color-violet-light);
+  color: var(--color-violet-dark);
+}
+
+.sidebar-group-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
 }
 
 .sidebar-divider {
@@ -1369,6 +1379,9 @@ body.state-auth .auth-gate {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  margin-left: 20px;
+  padding-left: 10px;
+  border-left: 2px solid var(--color-violet-light);
 }
 
 .sidebar:not(.collapsed) .sidebar-group.collapsed .sidebar-group-items {
@@ -1377,6 +1390,12 @@ body.state-auth .auth-gate {
 
 .sidebar.collapsed .sidebar-group-header {
   display: none;
+}
+
+.sidebar.collapsed .sidebar-group-items {
+  margin-left: 0;
+  padding-left: 0;
+  border-left: none;
 }
 
 .sidebar-link {
