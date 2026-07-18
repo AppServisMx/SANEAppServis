@@ -91,15 +91,15 @@ function offsetDateStr(daysAgo) {
 
 /* ============ Datos (en memoria, sincronizados con Firestore) ============ */
 
-let data = { productos: [], costeos: [], ventas: [], gastos: [], insumos: [], costeoDetallado: [], proveedores: [], clientes: [], pedidos: [], materiales: [], usuario: null };
+let data = { productos: [], costeos: [], ventas: [], gastos: [], insumos: [], costeoDetallado: [], proveedores: [], clientes: [], pedidos: [], materiales: [], envios: [], activos: [], cotizaciones: [], usuario: null };
 
 function vaciarData() {
-  data = { productos: [], costeos: [], ventas: [], gastos: [], insumos: [], costeoDetallado: [], proveedores: [], clientes: [], pedidos: [], materiales: [], usuario: null };
+  data = { productos: [], costeos: [], ventas: [], gastos: [], insumos: [], costeoDetallado: [], proveedores: [], clientes: [], pedidos: [], materiales: [], envios: [], activos: [], cotizaciones: [], usuario: null };
 }
 
 /* ============ Persistencia en Firestore (usuarios/{uid}/...) ============ */
 
-const COLECCIONES = ['productos', 'insumos', 'costeos', 'costeoDetallado', 'ventas', 'gastos', 'proveedores', 'clientes', 'pedidos', 'materiales'];
+const COLECCIONES = ['productos', 'insumos', 'costeos', 'costeoDetallado', 'ventas', 'gastos', 'proveedores', 'clientes', 'pedidos', 'materiales', 'envios', 'activos', 'cotizaciones'];
 
 function usuarioRef(uid) {
   return doc(db, 'usuarios', uid);
@@ -142,6 +142,15 @@ function borrarPedidoRemoto(id) { return deleteDoc(documentoRef(currentUser.uid,
 
 function guardarMaterial(m) { return setDoc(documentoRef(currentUser.uid, 'materiales', m.id), m); }
 function borrarMaterialRemoto(id) { return deleteDoc(documentoRef(currentUser.uid, 'materiales', id)); }
+
+function guardarEnvio(e) { return setDoc(documentoRef(currentUser.uid, 'envios', e.id), e); }
+function borrarEnvioRemoto(id) { return deleteDoc(documentoRef(currentUser.uid, 'envios', id)); }
+
+function guardarActivo(a) { return setDoc(documentoRef(currentUser.uid, 'activos', a.id), a); }
+function borrarActivoRemoto(id) { return deleteDoc(documentoRef(currentUser.uid, 'activos', id)); }
+
+function guardarCotizacion(c) { return setDoc(documentoRef(currentUser.uid, 'cotizaciones', c.id), c); }
+function borrarCotizacionRemoto(id) { return deleteDoc(documentoRef(currentUser.uid, 'cotizaciones', id)); }
 
 /* Escucha en tiempo real las 8 colecciones del usuario: cualquier cambio (hecho desde
    este dispositivo o desde otro) actualiza "data" y vuelve a dibujar la pantalla.
@@ -201,6 +210,18 @@ function getPedido(id) {
 
 function getMaterial(id) {
   return data.materiales.find(m => m.id === id) || null;
+}
+
+function getEnvio(id) {
+  return data.envios.find(e => e.id === id) || null;
+}
+
+function getActivo(id) {
+  return data.activos.find(a => a.id === id) || null;
+}
+
+function getCotizacion(id) {
+  return data.cotizaciones.find(c => c.id === id) || null;
 }
 
 function categoriaDeUnidad(unidad) {
@@ -592,7 +613,10 @@ function renderCurrentScreen() {
   if (currentScreen === 'costeo') renderCosteo();
   if (currentScreen === 'ventas') renderVentas();
   if (currentScreen === 'pedidos') renderPedidos();
+  if (currentScreen === 'envios') renderEnvios();
   if (currentScreen === 'gastos') renderGastos();
+  if (currentScreen === 'cotizaciones') renderCotizaciones();
+  if (currentScreen === 'activos') renderActivos();
   if (currentScreen === 'proveedores') renderProveedores();
   if (currentScreen === 'clientes') renderClientes();
   if (currentScreen === 'inventario') renderInventario();
@@ -609,7 +633,10 @@ function renderAll() {
   renderCosteo();
   renderVentas();
   renderPedidos();
+  renderEnvios();
   renderGastos();
+  renderCotizaciones();
+  renderActivos();
   renderProveedores();
   renderClientes();
   renderInventario();
@@ -905,6 +932,81 @@ function renderGastos() {
   `).join('');
 }
 
+/* ============ Render: Cotizaciones ============ */
+
+function opcionMasBarata(opciones) {
+  const conCosto = (opciones || []).filter(o => typeof o.costo === 'number' && !isNaN(o.costo));
+  if (conCosto.length === 0) return null;
+  return conCosto.reduce((min, o) => (o.costo < min.costo ? o : min), conCosto[0]);
+}
+
+function renderCotizaciones() {
+  const lista = document.getElementById('lista-cotizaciones');
+  const vacio = document.getElementById('cotizaciones-vacio');
+
+  if (data.cotizaciones.length === 0) {
+    lista.innerHTML = '';
+    vacio.style.display = 'block';
+    return;
+  }
+  vacio.style.display = 'none';
+
+  lista.innerHTML = data.cotizaciones.map(c => {
+    const numOpciones = (c.opciones || []).length;
+    const masBarata = opcionMasBarata(c.opciones);
+    const detalle = [
+      c.cantidad ? `${c.cantidad} pza` : '',
+      numOpciones > 0 ? `${numOpciones} opción(es)` : 'Sin opciones aún',
+      masBarata ? `Más barata: ${escapeHtml(masBarata.proveedor || 'Sin nombre')} (${formatCurrency(masBarata.costo)})` : ''
+    ].filter(Boolean).join(' · ');
+    const badgeClase = c.comprado ? 'estado-badge--entregado' : 'estado-badge--pendiente';
+    const badgeTexto = c.comprado ? 'Comprado' : 'Por comprar';
+    return `
+    <li class="item-card">
+      <div class="item-info">
+        <span class="item-title">${escapeHtml(c.articulo)}</span>
+        <span class="item-subtitle"><span class="estado-badge ${badgeClase}">${badgeTexto}</span>${detalle}</span>
+      </div>
+      <div class="item-actions">
+        <button type="button" class="icon-btn" data-action="toggle-comprado-cotizacion" data-id="${c.id}" aria-label="Marcar comprado">${ICON_CHECK}</button>
+        <button type="button" class="icon-btn" data-action="editar-cotizacion" data-id="${c.id}" aria-label="Editar">${ICON_PENCIL}</button>
+        <button type="button" class="icon-btn" data-action="eliminar-cotizacion" data-id="${c.id}" aria-label="Eliminar">${ICON_TRASH}</button>
+      </div>
+    </li>
+  `;
+  }).join('');
+}
+
+/* ============ Render: Activos ============ */
+
+function renderActivos() {
+  const lista = document.getElementById('lista-activos');
+  const vacio = document.getElementById('activos-vacio');
+
+  if (data.activos.length === 0) {
+    lista.innerHTML = '';
+    vacio.style.display = 'block';
+    return;
+  }
+  vacio.style.display = 'none';
+
+  lista.innerHTML = data.activos.map(a => {
+    const detalle = [a.modelo, formatCurrency(a.costo), a.fecha ? formatDate(a.fecha) : '', a.proveedor].filter(Boolean).join(' · ');
+    return `
+    <li class="item-card">
+      <div class="item-info">
+        <span class="item-title">${escapeHtml(a.nombre)}</span>
+        <span class="item-subtitle">${escapeHtml(detalle)}</span>
+      </div>
+      <div class="item-actions">
+        <button type="button" class="icon-btn" data-action="editar-activo" data-id="${a.id}" aria-label="Editar">${ICON_PENCIL}</button>
+        <button type="button" class="icon-btn" data-action="eliminar-activo" data-id="${a.id}" aria-label="Eliminar">${ICON_TRASH}</button>
+      </div>
+    </li>
+  `;
+  }).join('');
+}
+
 /* ============ Render: Proveedores ============ */
 
 function renderProveedores() {
@@ -1011,6 +1113,49 @@ function renderPedidos() {
         <button type="button" class="icon-btn" data-action="toggle-estado-pedido" data-id="${p.id}" aria-label="Cambiar estado">${ICON_CHECK}</button>
         <button type="button" class="icon-btn" data-action="editar-pedido" data-id="${p.id}" aria-label="Editar">${ICON_PENCIL}</button>
         <button type="button" class="icon-btn" data-action="eliminar-pedido" data-id="${p.id}" aria-label="Eliminar">${ICON_TRASH}</button>
+      </div>
+    </li>
+  `;
+  }).join('');
+}
+
+/* ============ Render: Envíos ============ */
+
+const ESTADO_ENVIO_LABEL = { pendiente: 'Pendiente', entregado: 'Entregado' };
+
+function renderEnvios() {
+  const lista = document.getElementById('lista-envios');
+  const vacio = document.getElementById('envios-vacio');
+
+  if (data.envios.length === 0) {
+    lista.innerHTML = '';
+    vacio.style.display = 'block';
+    return;
+  }
+  vacio.style.display = 'none';
+
+  const enviosOrdenados = [...data.envios].sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''));
+
+  lista.innerHTML = enviosOrdenados.map(e => {
+    const detalle = [
+      e.clienteNombre,
+      e.direccion,
+      `Entrega: ${formatDate(e.fecha)}`,
+      e.repartidor,
+      e.costo ? formatCurrency(e.costo) : ''
+    ].filter(Boolean).join(' · ');
+    const badgeClase = e.estado === 'entregado' ? 'estado-badge--entregado' : 'estado-badge--pendiente';
+    const badgeTexto = ESTADO_ENVIO_LABEL[e.estado] || 'Pendiente';
+    return `
+    <li class="item-card">
+      <div class="item-info">
+        <span class="item-title">${escapeHtml(e.descripcion)}</span>
+        <span class="item-subtitle"><span class="estado-badge ${badgeClase}">${badgeTexto}</span>${escapeHtml(detalle)}</span>
+      </div>
+      <div class="item-actions">
+        <button type="button" class="icon-btn" data-action="toggle-estado-envio" data-id="${e.id}" aria-label="Cambiar estado">${ICON_CHECK}</button>
+        <button type="button" class="icon-btn" data-action="editar-envio" data-id="${e.id}" aria-label="Editar">${ICON_PENCIL}</button>
+        <button type="button" class="icon-btn" data-action="eliminar-envio" data-id="${e.id}" aria-label="Eliminar">${ICON_TRASH}</button>
       </div>
     </li>
   `;
@@ -1467,6 +1612,32 @@ function openPedidoModal(id = null) {
   openModal('pedido');
 }
 
+function openEnvioModal(id = null) {
+  const form = document.getElementById('form-envio');
+  form.reset();
+  document.getElementById('envio-id').value = '';
+
+  const clienteSelect = document.getElementById('envio-cliente-select');
+  clienteSelect.innerHTML = '<option value="">Sin especificar</option>' +
+    data.clientes.map(c => `<option value="${c.id}">${escapeHtml([c.nombre, c.apellido].filter(Boolean).join(' '))}</option>`).join('');
+
+  if (id) {
+    const e = getEnvio(id);
+    if (e) {
+      document.getElementById('envio-id').value = e.id;
+      document.getElementById('envio-descripcion').value = e.descripcion;
+      clienteSelect.value = e.clienteId || '';
+      document.getElementById('envio-direccion').value = e.direccion;
+      document.getElementById('envio-fecha').value = e.fecha;
+      document.getElementById('envio-repartidor').value = e.repartidor || '';
+      document.getElementById('envio-costo').value = e.costo || '';
+    }
+  } else {
+    document.getElementById('envio-fecha').value = todayStr();
+  }
+  openModal('envio');
+}
+
 function openProveedorModal(id = null) {
   const form = document.getElementById('form-proveedor');
   form.reset();
@@ -1579,6 +1750,21 @@ function toggleEstadoPedido(id) {
   renderPedidos();
 }
 
+async function eliminarEnvio(id) {
+  if (!await mostrarConfirmacion('¿Seguro que quieres borrar este envío?')) return;
+  data.envios = data.envios.filter(e => e.id !== id);
+  borrarEnvioRemoto(id);
+  renderEnvios();
+}
+
+function toggleEstadoEnvio(id) {
+  const e = getEnvio(id);
+  if (!e) return;
+  e.estado = e.estado === 'entregado' ? 'pendiente' : 'entregado';
+  guardarEnvio(e);
+  renderEnvios();
+}
+
 async function eliminarProveedor(id) {
   if (!await mostrarConfirmacion('¿Seguro que quieres borrar este proveedor?')) return;
   data.proveedores = data.proveedores.filter(p => p.id !== id);
@@ -1591,6 +1777,92 @@ async function eliminarCliente(id) {
   data.clientes = data.clientes.filter(c => c.id !== id);
   borrarClienteRemoto(id);
   renderClientes();
+}
+
+function openActivoModal(id = null) {
+  const form = document.getElementById('form-activo');
+  form.reset();
+  document.getElementById('activo-id').value = '';
+
+  if (id) {
+    const a = getActivo(id);
+    if (a) {
+      document.getElementById('activo-id').value = a.id;
+      document.getElementById('activo-nombre').value = a.nombre;
+      document.getElementById('activo-modelo').value = a.modelo || '';
+      document.getElementById('activo-costo').value = a.costo;
+      document.getElementById('activo-fecha').value = a.fecha || '';
+      document.getElementById('activo-proveedor').value = a.proveedor || '';
+      document.getElementById('activo-observaciones').value = a.observaciones || '';
+    }
+  }
+  openModal('activo');
+}
+
+async function eliminarActivo(id) {
+  if (!await mostrarConfirmacion('¿Seguro que quieres borrar este activo?')) return;
+  data.activos = data.activos.filter(a => a.id !== id);
+  borrarActivoRemoto(id);
+  renderActivos();
+}
+
+/* ---- Cotizaciones: filas dinámicas de opciones de proveedor ---- */
+
+let opcionRowCounter = 0;
+
+function agregarFilaOpcion(valores = {}) {
+  opcionRowCounter += 1;
+  const contenedor = document.getElementById('cotizacion-opciones');
+  const div = document.createElement('div');
+  div.className = 'insumo-row opcion-row';
+  div.dataset.rowId = `opcion-row-${opcionRowCounter}`;
+  div.innerHTML = `
+    <div class="opcion-row-fields">
+      <input type="text" class="opcion-proveedor" placeholder="Proveedor" value="${escapeHtml(valores.proveedor || '')}">
+      <input type="text" class="opcion-telefono" placeholder="Teléfono" value="${escapeHtml(valores.telefono || '')}">
+      <input type="number" class="opcion-costo" min="0" step="0.01" placeholder="Costo" value="${valores.costo != null ? valores.costo : ''}">
+      <input type="text" class="opcion-observaciones" placeholder="Observaciones (opcional)" value="${escapeHtml(valores.observaciones || '')}">
+    </div>
+    <button type="button" class="insumo-row-remove" aria-label="Quitar opción">${ICON_TRASH}</button>
+  `;
+  contenedor.appendChild(div);
+  div.querySelector('.insumo-row-remove').addEventListener('click', () => div.remove());
+}
+
+function openCotizacionModal(id = null) {
+  const form = document.getElementById('form-cotizacion');
+  form.reset();
+  document.getElementById('cotizacion-id').value = '';
+  document.getElementById('cotizacion-opciones').innerHTML = '';
+
+  if (id) {
+    const c = getCotizacion(id);
+    if (c) {
+      document.getElementById('cotizacion-id').value = c.id;
+      document.getElementById('cotizacion-articulo').value = c.articulo;
+      document.getElementById('cotizacion-cantidad').value = c.cantidad || '';
+      (c.opciones || []).forEach(o => agregarFilaOpcion(o));
+    }
+  }
+  if (document.getElementById('cotizacion-opciones').children.length === 0) {
+    agregarFilaOpcion();
+  }
+  openModal('cotizacion');
+}
+
+async function eliminarCotizacion(id) {
+  if (!await mostrarConfirmacion('¿Seguro que quieres borrar este artículo?')) return;
+  data.cotizaciones = data.cotizaciones.filter(c => c.id !== id);
+  borrarCotizacionRemoto(id);
+  renderCotizaciones();
+}
+
+function toggleCompradoCotizacion(id) {
+  const c = getCotizacion(id);
+  if (!c) return;
+  c.comprado = !c.comprado;
+  guardarCotizacion(c);
+  renderCotizaciones();
 }
 
 /* ============ Cuentas (Firebase Authentication) ============ */
@@ -2061,6 +2333,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (action === 'editar-material') openMaterialModal(id);
     if (action === 'eliminar-material') eliminarMaterial(id);
     if (action === 'agregar-compra') abrirCompraModal(tipo, id);
+    if (action === 'editar-envio') openEnvioModal(id);
+    if (action === 'eliminar-envio') eliminarEnvio(id);
+    if (action === 'toggle-estado-envio') toggleEstadoEnvio(id);
+    if (action === 'editar-activo') openActivoModal(id);
+    if (action === 'eliminar-activo') eliminarActivo(id);
+    if (action === 'editar-cotizacion') openCotizacionModal(id);
+    if (action === 'eliminar-cotizacion') eliminarCotizacion(id);
+    if (action === 'toggle-comprado-cotizacion') toggleCompradoCotizacion(id);
   });
 
   /* Formulario: Producto */
@@ -2211,6 +2491,41 @@ document.addEventListener('DOMContentLoaded', () => {
     renderPedidos();
   });
 
+  /* Formulario: Envío */
+  document.getElementById('btn-add-envio').addEventListener('click', () => openEnvioModal());
+  document.getElementById('form-envio').addEventListener('submit', e => {
+    e.preventDefault();
+    const id = document.getElementById('envio-id').value;
+    const descripcion = document.getElementById('envio-descripcion').value.trim();
+    const clienteId = document.getElementById('envio-cliente-select').value;
+    const cliente = clienteId ? getCliente(clienteId) : null;
+    const direccion = document.getElementById('envio-direccion').value.trim();
+    const fecha = document.getElementById('envio-fecha').value;
+    const repartidor = document.getElementById('envio-repartidor').value.trim();
+    const costo = parseFloat(document.getElementById('envio-costo').value) || 0;
+    if (!descripcion || !direccion || !fecha) return;
+
+    const clienteNombre = cliente ? [cliente.nombre, cliente.apellido].filter(Boolean).join(' ') : '';
+
+    if (id) {
+      const e2 = getEnvio(id);
+      e2.descripcion = descripcion;
+      e2.clienteId = clienteId;
+      e2.clienteNombre = clienteNombre;
+      e2.direccion = direccion;
+      e2.fecha = fecha;
+      e2.repartidor = repartidor;
+      e2.costo = costo;
+      guardarEnvio(e2);
+    } else {
+      const nuevo = { id: uid(), descripcion, clienteId, clienteNombre, direccion, fecha, repartidor, costo, estado: 'pendiente' };
+      data.envios.push(nuevo);
+      guardarEnvio(nuevo);
+    }
+    closeModal();
+    renderEnvios();
+  });
+
   /* Formulario: Gasto */
   document.getElementById('form-gasto').addEventListener('submit', e => {
     e.preventDefault();
@@ -2226,6 +2541,70 @@ document.addEventListener('DOMContentLoaded', () => {
     closeModal();
     renderGastos();
     renderInicio();
+  });
+
+  /* Formulario: Activos */
+  document.getElementById('btn-add-activo').addEventListener('click', () => openActivoModal());
+  document.getElementById('form-activo').addEventListener('submit', e => {
+    e.preventDefault();
+    const id = document.getElementById('activo-id').value;
+    const nombre = document.getElementById('activo-nombre').value.trim();
+    const modelo = document.getElementById('activo-modelo').value.trim();
+    const costo = parseFloat(document.getElementById('activo-costo').value);
+    const fecha = document.getElementById('activo-fecha').value;
+    const proveedor = document.getElementById('activo-proveedor').value.trim();
+    const observaciones = document.getElementById('activo-observaciones').value.trim();
+    if (!nombre || isNaN(costo) || costo < 0) return;
+
+    if (id) {
+      const a = getActivo(id);
+      a.nombre = nombre;
+      a.modelo = modelo;
+      a.costo = costo;
+      a.fecha = fecha;
+      a.proveedor = proveedor;
+      a.observaciones = observaciones;
+      guardarActivo(a);
+    } else {
+      const nuevo = { id: uid(), nombre, modelo, costo, fecha, proveedor, observaciones };
+      data.activos.push(nuevo);
+      guardarActivo(nuevo);
+    }
+    closeModal();
+    renderActivos();
+  });
+
+  /* Formulario: Cotizaciones */
+  document.getElementById('btn-add-cotizacion').addEventListener('click', () => openCotizacionModal());
+  document.getElementById('btn-add-opcion-row').addEventListener('click', () => agregarFilaOpcion());
+  document.getElementById('form-cotizacion').addEventListener('submit', e => {
+    e.preventDefault();
+    const id = document.getElementById('cotizacion-id').value;
+    const articulo = document.getElementById('cotizacion-articulo').value.trim();
+    const cantidad = parseInt(document.getElementById('cotizacion-cantidad').value, 10) || null;
+    if (!articulo) return;
+
+    const opciones = Array.from(document.querySelectorAll('#cotizacion-opciones .opcion-row')).map(row => {
+      const proveedor = row.querySelector('.opcion-proveedor').value.trim();
+      const telefono = row.querySelector('.opcion-telefono').value.trim();
+      const costoVal = row.querySelector('.opcion-costo').value;
+      const observaciones = row.querySelector('.opcion-observaciones').value.trim();
+      return { proveedor, telefono, costo: costoVal === '' ? null : parseFloat(costoVal), observaciones };
+    }).filter(o => o.proveedor || o.telefono || o.costo != null || o.observaciones);
+
+    if (id) {
+      const c = getCotizacion(id);
+      c.articulo = articulo;
+      c.cantidad = cantidad;
+      c.opciones = opciones;
+      guardarCotizacion(c);
+    } else {
+      const nuevo = { id: uid(), articulo, cantidad, opciones, comprado: false };
+      data.cotizaciones.push(nuevo);
+      guardarCotizacion(nuevo);
+    }
+    closeModal();
+    renderCotizaciones();
   });
 
   /* Formulario: Proveedores */

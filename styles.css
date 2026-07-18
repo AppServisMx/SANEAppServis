@@ -1029,6 +1029,58 @@ body.state-auth .auth-gate {
   color: var(--color-orange);
 }
 
+.opcion-row {
+  align-items: flex-start;
+}
+
+.opcion-row-fields {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.opcion-row-fields input {
+  min-width: 0;
+  font-size: 13.5px;
+  padding: 9px 10px;
+}
+
+.opcion-row-fields input:nth-child(4) {
+  grid-column: 1 / -1;
+}
+
+.tabla-equivalencias-wrap {
+  overflow-x: auto;
+  margin-bottom: 20px;
+}
+
+.tabla-equivalencias {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.tabla-equivalencias th {
+  text-align: left;
+  padding: 8px 12px;
+  background: var(--color-violet-light);
+  color: var(--color-violet-dark);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.tabla-equivalencias td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-violet-light);
+  white-space: nowrap;
+}
+
+.tabla-equivalencias tr:last-child td {
+  border-bottom: none;
+}
+
 /* ---------- Advertencia de Gastos ---------- */
 
 .warning-banner {
