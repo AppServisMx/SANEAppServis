@@ -1404,7 +1404,9 @@ body.state-auth .auth-gate {
 
 .sidebar-link {
   display: flex;
+  flex-direction: row;
   align-items: center;
+  justify-content: flex-start;
   gap: 12px;
   border: none;
   background: none;
@@ -1425,13 +1427,6 @@ body.state-auth .auth-gate {
 .sidebar-link.active {
   background: var(--color-violet-light);
   color: var(--color-violet-dark);
-}
-
-/* Inicio y Resumen se ven igual que los encabezados de grupo (Producción/
-   Ventas/Negocio): mismo tamaño, mismo color, sin caja de "activo" ni
-   flecha — la única diferencia es que no despliegan nada. */
-.sidebar-nav .sidebar-link--top.active {
-  background: none;
 }
 
 .sidebar.plan-basico .sidebar-link--pro {
