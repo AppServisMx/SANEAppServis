@@ -1331,6 +1331,11 @@ body.state-auth .auth-gate {
   flex-direction: column;
 }
 
+.sidebar-group-header,
+.sidebar-nav .sidebar-link--top {
+  color: var(--color-violet-dark);
+}
+
 .sidebar-group-header {
   display: flex;
   align-items: center;
@@ -1342,7 +1347,6 @@ body.state-auth .auth-gate {
   padding: 11px 12px;
   font-size: 14px;
   font-weight: 600;
-  color: var(--color-text-muted);
   cursor: pointer;
 }
 
