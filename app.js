@@ -597,11 +597,37 @@ function closeDetailModal() {
 
 /* ============ Navegación entre pantallas ============ */
 
+/* ---- Grupos desplegables del sidebar (Producción / Ventas / Negocio) ---- */
+
+const SIDEBAR_GRUPO_STORAGE_PREFIX = 'emprendedoresAppServis_grupo_';
+
+// La primera vez (sin nada guardado) los grupos arrancan cerrados, para que
+// el menú no se vea tan largo; una vez que el usuario abre uno, se recuerda.
+function getGrupoColapsado(nombre) {
+  const v = localStorage.getItem(SIDEBAR_GRUPO_STORAGE_PREFIX + nombre);
+  return v === null ? true : v === 'true';
+}
+
+function setGrupoColapsado(nombre, colapsado) {
+  localStorage.setItem(SIDEBAR_GRUPO_STORAGE_PREFIX + nombre, colapsado);
+  const grupo = document.querySelector(`.sidebar-group[data-grupo="${nombre}"]`);
+  if (grupo) grupo.classList.toggle('collapsed', colapsado);
+}
+
+// Al entrar a una pantalla que vive dentro de un grupo, ese grupo se abre
+// solo, para que siempre se vea resaltada la opción activa.
+function expandirGrupoDeScreen(screen) {
+  const boton = document.querySelector(`.nav-btn[data-screen="${screen}"]`);
+  const grupo = boton && boton.closest('.sidebar-group');
+  if (grupo) setGrupoColapsado(grupo.dataset.grupo, false);
+}
+
 function goToScreen(screen) {
   currentScreen = screen;
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(`screen-${screen}`).classList.add('active');
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.screen === screen));
+  expandirGrupoDeScreen(screen);
   renderCurrentScreen();
 }
 
@@ -2184,6 +2210,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const collapsed = sidebar.classList.toggle('collapsed');
     localStorage.setItem(SIDEBAR_STORAGE_KEY, collapsed);
   });
+
+  /* Grupos desplegables del sidebar (Producción / Ventas / Negocio) */
+  document.querySelectorAll('.sidebar-group').forEach(grupo => {
+    setGrupoColapsado(grupo.dataset.grupo, getGrupoColapsado(grupo.dataset.grupo));
+  });
+  document.querySelectorAll('.sidebar-group-header').forEach(header => {
+    header.addEventListener('click', () => {
+      const grupo = header.closest('.sidebar-group');
+      setGrupoColapsado(grupo.dataset.grupo, !grupo.classList.contains('collapsed'));
+    });
+  });
+  expandirGrupoDeScreen(currentScreen);
 
   /* Barra lateral: abrir/cerrar arrastrando el borde con el dedo o el mouse.
      Solo se mueve mientras se arrastra; al soltar siempre cae en uno de los

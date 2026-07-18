@@ -1326,6 +1326,52 @@ body.state-auth .auth-gate {
   padding: 14px 12px;
 }
 
+.sidebar-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  border: none;
+  background: none;
+  padding: 10px 12px 6px;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+}
+
+.sidebar-group-chevron {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.sidebar-group.collapsed .sidebar-group-chevron {
+  transform: rotate(-90deg);
+}
+
+.sidebar-group-items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sidebar:not(.collapsed) .sidebar-group.collapsed .sidebar-group-items {
+  display: none;
+}
+
+.sidebar.collapsed .sidebar-group-header {
+  display: none;
+}
+
 .sidebar-link {
   display: flex;
   align-items: center;
